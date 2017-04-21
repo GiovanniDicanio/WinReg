@@ -919,21 +919,20 @@ inline std::vector<BYTE> GetBinaryValue(HKEY hKey, const std::wstring& valueName
 // Return the DWORD type ID for the input registry value
 inline DWORD QueryValueType(HKEY hKey, const std::wstring& valueName)
 {
-    DWORD typeId{};     // will be returned by RegGetValue
+    DWORD typeId{};     // will be returned by RegQueryValueEx
 
-    const DWORD flags = RRF_RT_ANY;     // no type restriction
-    LONG retCode = ::RegGetValue(
+    LONG retCode = ::RegQueryValueEx(
         hKey,
-        nullptr, // no subkey
         valueName.c_str(),
-        flags,
+        nullptr,    // reserved
         &typeId,
-        nullptr, // not interested
-        nullptr  // not interested
+        nullptr,    // not interested
+        nullptr     // not interested
     );
+
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot get the value type: RegGetValue failed.", retCode };
+        throw RegException{ "Cannot get the value type: RegQueryValueEx failed.", retCode };
     }
 
     return typeId;
