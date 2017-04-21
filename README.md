@@ -38,7 +38,7 @@ The library exposes two main classes:
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 
-In addition, there are various functions that wrap raw Win32 registry APIs.
+In addition, there are various functions that wrap raw Win32 registry C-interface APIs.
 
 The library stuff lives under the `winreg` namespace.
 
