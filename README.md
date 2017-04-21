@@ -42,5 +42,5 @@ In addition, there are various functions that wrap raw Win32 registry APIs.
 
 The library stuff lives under the `winreg` namespace.
 
-See the **`WinReg.hpp`** header for more details and **documentation**.
+See the [**`WinReg.hpp`**](.../blob/master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
 
