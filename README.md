@@ -29,7 +29,7 @@ Being very busy right now, I preferred releasing this library on GitHub in curre
 
 I developed this code using **Visual Studio 2015 with Update 3**.
 
-The library's code is contained in a reusable header-only `WinReg.hpp` file.
+The library's code is contained in a **reusable** _header-only_ [`WinReg.hpp`](../master/WinReg/WinReg/WinReg.hpp) file.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -42,5 +42,4 @@ In addition, there are various functions that wrap raw Win32 registry APIs.
 
 The library stuff lives under the `winreg` namespace.
 
-See the [**`WinReg.hpp`**](.../blob/master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
-
+See the [**`WinReg.hpp`**](../master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
