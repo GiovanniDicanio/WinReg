@@ -112,9 +112,6 @@ int main()
         typeId = winreg::QueryValueType(key.Get(), L"TestValueExpandString");
         if (typeId != REG_EXPAND_SZ)
         {
-            // NOTE: This seems a bug in the RegGetValue API, *not* in my wrapper function.
-            // In fact, I tried direct RegGetValue calls for REG_EXPAND_SZ values,
-            // and the API returns REG_SZ instead :(
             wcout << "winreg::QueryValueType failed for REG_EXPAND_SZ.\n";
         }
 
