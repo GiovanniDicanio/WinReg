@@ -16,6 +16,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | Win32 Registry Type  | C++ Type                     |
 | -------------------- |:----------------------------:| 
 | `REG_DWORD`          | `DWORD`                      |
+| `REG_QWORD`          | `ULONGLONG`                  |
 | `REG_SZ`             | `std::wstring`               |
 | `REG_EXPAND_SZ`      | `std::wstring`               |
 | `REG_MULTI_SZ`       | `std::vector<std::wstring>`  |
