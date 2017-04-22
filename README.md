@@ -22,13 +22,8 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_MULTI_SZ`       | `std::vector<std::wstring>`  |
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
-**NOTE**: I did some tests, and the code works correctly; however, I'd prefer doing _more_ testing. 
 
-Currently, the code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
-
-Being very busy right now, I preferred releasing this library on GitHub in current status; constructive feedback, bug reports, etc. are welcome.
-
-I developed this code using **Visual Studio 2015 with Update 3**.
+I developed this code using **Visual Studio 2015 with Update 3**. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
 The library's code is contained in a **reusable** _header-only_ [`WinReg.hpp`](../master/WinReg/WinReg/WinReg.hpp) file.
 
@@ -42,11 +37,12 @@ The library exposes two main classes:
 There are many member functions inside the `RegKey` class, that wrap raw Win32 registry C-interface APIs
 in a convenient C++ way.
 
-For example, you can simply open a registry key and get a `DWORD` value with C++ code like this:
+For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
 RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\Connie" };
-DWORD dw = key.GetDwordValue(L"MyValue");
+DWORD dw = key.GetDwordValue(L"SomeDwordValue");
+wstring s = key.GetStringValue(L"SomeStringValue");
 ```
 
 Or you can enumerate all the values under a key with this simple code:
