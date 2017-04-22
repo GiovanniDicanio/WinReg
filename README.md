@@ -1,5 +1,5 @@
 # WinReg v1.0
-## C++ Wrappers around Windows Registry Win32 APIs
+## High-level C++ Wrappers Around Low-level Windows Registry C-interface APIs
 
 by Giovanni Dicanio
 
