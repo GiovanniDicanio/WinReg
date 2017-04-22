@@ -39,8 +39,21 @@ The library exposes two main classes:
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 
-In addition, there are various functions that wrap raw Win32 registry C-interface APIs.
+There are many member functions inside the `RegKey` class, that wrap raw Win32 registry C-interface APIs
+in a convenient C++ way.
 
+For example, you can simply open a registry key and get a `DWORD` value with C++ code like this:
+
+```c++
+RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\Connie" };
+DWORD dw = key.GetDwordValue(L"MyValue");
+```
+
+Or you can enumerate all the values under a key with this simple code:
+```c++
+auto values = key.EnumValues();
+```
+ 
 The library stuff lives under the `winreg` namespace.
 
 See the [**`WinReg.hpp`**](../master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
