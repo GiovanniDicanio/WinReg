@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio 
 //  
 // First version: 2017, January 22nd
-// Last update: 2017, April 22nd
+// Last update: 2017, August 9th
 // 
 // E-mail: <giovanni.dicanio AT gmail.com>
 // 
@@ -98,10 +98,18 @@ public:
     explicit RegKey(HKEY hKey) noexcept;
 
     // Open the given registry key if it exists, else create a new key.
-    // Uses default KEY_READ|KEY_WRITE access; for finer grained control, 
-    // call the Create() method overloads.
+    // Uses default KEY_READ|KEY_WRITE access.
+    // For finer grained control, call the Create() method overloads.
     // Throw RegException on failure.
     RegKey(HKEY hKeyParent, const std::wstring& subKey);
+
+    // Open the given registry key if it exists, else create a new key.
+    // Allow the caller to specify the desired access to the key (e.g. KEY_READ
+    // for read-only access).
+    // For finer grained control, call the Create() method overloads.
+    // Throw RegException on failure.
+    RegKey(HKEY hKeyParent, const std::wstring& subKey, REGSAM desiredAccess);
+
 
     // Take ownership of the input key handle.
     // The input key handle wrapper is reset to an empty state.
@@ -350,6 +358,12 @@ inline RegKey::RegKey(const HKEY hKey) noexcept
 inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey)
 {
     Create(hKeyParent, subKey);
+}
+
+
+inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey, REGSAM desiredAccess)
+{
+    Create(hKeyParent, subKey, desiredAccess);
 }
 
 
