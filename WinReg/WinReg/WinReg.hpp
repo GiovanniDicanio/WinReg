@@ -62,6 +62,12 @@
 #include <utility>          // std::swap, std::pair
 #include <vector>           // std::vector
 
+#ifdef _MSC_VER
+#   if _MSC_VER < 1900
+#      define noexcept
+#      define constexpr const
+#   endif
+#endif
 
 namespace winreg
 {
