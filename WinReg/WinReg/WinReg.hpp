@@ -258,6 +258,7 @@ public:
 
     void DeleteValue(const std::wstring& valueName);
     void DeleteKey(const std::wstring& subKey, REGSAM desiredAccess);
+    void DeleteTree(const std::wstring& subKey);
     void FlushKey();
     void LoadKey(const std::wstring& subKey, const std::wstring& filename);
     void SaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes);
@@ -1256,6 +1257,18 @@ inline void RegKey::DeleteKey(const std::wstring& subKey, const REGSAM desiredAc
     if (retCode != ERROR_SUCCESS)
     {
         throw RegException{ "RegDeleteKeyEx failed.", retCode };
+    }
+}
+
+
+inline void RegKey::DeleteTree(const std::wstring& subKey)
+{
+    _ASSERTE(IsValid());
+
+    LONG retCode = ::RegDeleteTree(m_hKey, subKey.c_str());
+    if (retCode != ERROR_SUCCESS)
+    {
+        throw RegException{ "RegDeleteTree failed.", retCode };
     }
 }
 
