@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio 
 //  
 // First version: 2017, January 22nd
-// Last update: 2017, August 9th
+// Last update: 2019, March 26th
 // 
 // E-mail: <giovanni.dicanio AT gmail.com>
 // 
