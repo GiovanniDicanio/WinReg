@@ -40,7 +40,7 @@ in a convenient C++ way.
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
-RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\Connie" };
+RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey" };
 DWORD dw = key.GetDwordValue(L"SomeDwordValue");
 wstring s = key.GetStringValue(L"SomeStringValue");
 ```
@@ -48,6 +48,17 @@ wstring s = key.GetStringValue(L"SomeStringValue");
 Or you can enumerate all the values under a key with this simple code:
 ```c++
 auto values = key.EnumValues();
+
+for (const auto & v : values)
+{
+    //
+    // Process current value:
+    //
+    //   - v.first  (wstring) is the value name
+    //   - v.second (DWORD)   is the value type
+    //
+    ...
+}
 ```
  
 The library stuff lives under the `winreg` namespace.
