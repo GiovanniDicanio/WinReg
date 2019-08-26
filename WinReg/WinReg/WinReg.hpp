@@ -259,6 +259,7 @@ public:
     void DeleteValue(const std::wstring& valueName);
     void DeleteKey(const std::wstring& subKey, REGSAM desiredAccess);
     void DeleteTree(const std::wstring& subKey);
+    void CopyTree(const std::wstring& sourceSubKey, const RegKey& destKey);
     void FlushKey();
     void LoadKey(const std::wstring& subKey, const std::wstring& filename);
     void SaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes);
@@ -1269,6 +1270,18 @@ inline void RegKey::DeleteTree(const std::wstring& subKey)
     if (retCode != ERROR_SUCCESS)
     {
         throw RegException{ "RegDeleteTree failed.", retCode };
+    }
+}
+
+
+inline void RegKey::CopyTree(const std::wstring& sourceSubKey, const RegKey& destKey)
+{
+    _ASSERTE(IsValid());
+
+    LONG retCode = ::RegCopyTree(m_hKey, sourceSubKey.c_str(), destKey.Get());
+    if (retCode != ERROR_SUCCESS)
+    {
+        throw RegException{ "RegCopyTree failed.", retCode };
     }
 }
 
