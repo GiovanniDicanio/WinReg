@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio 
 //  
 // First version: 2017, January 22nd
-// Last update: 2019, March 26th
+// Last update: 2019, September 9th
 // 
 // E-mail: <giovanni.dicanio AT gmail.com>
 // 
@@ -24,13 +24,13 @@
 // This is a header-only self-contained reusable module.
 //
 // Compiler: Visual Studio 2015
-// Code compiles clean at /W4 on both 32-bit and 64-bit builds.
+// Code compiles cleanly at /W4 on both 32-bit and 64-bit builds.
 // 
 // ===========================================================================
 //
 // The MIT License(MIT)
 //
-// Copyright(c) 2017 Giovanni Dicanio
+// Copyright(c) 2017 by Giovanni Dicanio
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
