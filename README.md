@@ -1,5 +1,5 @@
 # WinReg v1.2.1
-## High-level C++ Wrappers Around Low-level Windows Registry C-interface APIs
+## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
 
@@ -7,7 +7,7 @@ The Windows Registry C-interface API is  _very low-level_ and _hard_ to use.
 
 I developed some **C++ wrappers** around this low-level Win32 API, to raise the semantic level, using C++ classes like `std::wstring`, `std::vector`, etc. instead of raw C-style buffers and low-level mechanisms. 
 
-For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminated C-style strings is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ between high-level C++ STL-based stuff and low-level Win32 C-interface APIs.
+For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminated C-style strings is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ between high-level C++ STL-based stuff and the low-level Win32 C-interface API.
 
 Moreover, Win32 error codes are translated to C++ exceptions.
 
@@ -34,18 +34,18 @@ The library exposes two main classes:
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 
-There are many member functions inside the `RegKey` class, that wrap raw Win32 registry C-interface APIs
-in a convenient C++ way.
+There are many member functions inside the `RegKey` class, that wrap many parts of the native C-interface Windows Registry API, in a convenient C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
-RegKey key{ HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey" };
-DWORD dw = key.GetDwordValue(L"SomeDwordValue");
-wstring s = key.GetStringValue(L"SomeStringValue");
+RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\Connie\\SomeKey" };
+
+DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
+wstring s  = key.GetStringValue(L"SomeStringValue");
 ```
 
-Or you can enumerate all the values under a key with this simple code:
+Or you can enumerate all the values under a given key with simple C++ code like this:
 ```c++
 auto values = key.EnumValues();
 
