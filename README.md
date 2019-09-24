@@ -65,5 +65,7 @@ The library stuff lives under the `winreg` namespace.
 
 See the [**`WinReg.hpp`**](../master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
 
+For those who use the **vcpkg** package manager, this library was also [added to the vcpkg catalog](https://github.com/microsoft/vcpkg/issues/8179).
+
 Thanks to everyone who contributed to this project with some additional features and constructive comments and suggestions.
 
