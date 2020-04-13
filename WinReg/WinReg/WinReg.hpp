@@ -1,5 +1,10 @@
-#ifndef INCLUDE_GIOVANNI_DICANIO_WINREG_HPP
-#define INCLUDE_GIOVANNI_DICANIO_WINREG_HPP
+#ifndef GIOVANNI_DICANIO_WINREG_HPP_INCLUDED
+#define GIOVANNI_DICANIO_WINREG_HPP_INCLUDED
+
+//==============================================================================
+// FILE: WinReg.hpp
+// DESC: Public header for the WinReg wrapper.
+//==============================================================================
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9,7 +14,7 @@
 //               Copyright (C) by Giovanni Dicanio 
 //  
 // First version: 2017, January 22nd
-// Last update: 2019, September 9th
+// Last update:   2020, April 13th
 // 
 // E-mail: <giovanni.dicanio AT gmail.com>
 // 
@@ -17,20 +22,21 @@
 // in the RegKey resource manager C++ class.
 // 
 // Errors are signaled throwing exceptions of class RegException.
-// 
+// In addition, there are also methods named following the style of TryAction
+// (e.g. TryGetDwordValue), that try to perform the given action, and on failure 
+// return Windows Registry API error codes wrapped in the RegResult class.
+//
 // Unicode UTF-16 strings are represented using the std::wstring class; 
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
-// 
-// This is a header-only self-contained reusable module.
 //
-// Compiler: Visual Studio 2015
+// Compiler: Visual Studio 2017
 // Code compiles cleanly at /W4 on both 32-bit and 64-bit builds.
 // 
 // ===========================================================================
 //
 // The MIT License(MIT)
 //
-// Copyright(c) 2017 by Giovanni Dicanio
+// Copyright(c) 2020 by Giovanni Dicanio
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
@@ -57,14 +63,18 @@
 #include <crtdbg.h>         // _ASSERTE
 
 #include <memory>           // std::unique_ptr
-#include <stdexcept>        // std::runtime_error
 #include <string>           // std::wstring
+#include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair
 #include <vector>           // std::vector
 
 
-namespace winreg
+namespace winreg 
 {
+
+// Forward class declarations
+class RegException;
+class RegResult;
 
 
 //------------------------------------------------------------------------------
@@ -83,7 +93,7 @@ namespace winreg
 // The class is also swappable (defines a custom non-member swap); 
 // relational operators are properly overloaded as well.
 //------------------------------------------------------------------------------
-class RegKey
+class RegKey 
 {
 public:
 
@@ -180,6 +190,13 @@ public:
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     );
 
+    // Wrapper around RegCreateKeyEx, that allows you to specify desired access
+    RegResult TryCreate(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess = KEY_READ | KEY_WRITE
+    ) noexcept;
+
     // Wrapper around RegCreateKeyEx
     void Create(
         HKEY hKeyParent,
@@ -189,13 +206,31 @@ public:
         SECURITY_ATTRIBUTES* securityAttributes,
         DWORD* disposition
     );
+
+    // Wrapper around RegCreateKeyEx
+    RegResult TryCreate(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess,
+        DWORD options,
+        SECURITY_ATTRIBUTES* securityAttributes,
+        DWORD* disposition
+    ) noexcept;
     
+
     // Wrapper around RegOpenKeyEx
     void Open(
         HKEY hKeyParent,
         const std::wstring& subKey,
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     );
+
+    // Wrapper around RegOpenKeyEx
+    RegResult TryOpen(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess = KEY_READ | KEY_WRITE
+    ) noexcept;
 
 
     //
@@ -210,6 +245,19 @@ public:
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
 
+    RegResult TrySetDwordValue(const std::wstring& valueName, DWORD data) noexcept;
+    RegResult TrySetQwordValue(const std::wstring& valueName, const ULONGLONG& data) noexcept;
+    RegResult TrySetStringValue(const std::wstring& valueName, const std::wstring& data) noexcept;
+    RegResult TrySetExpandStringValue(const std::wstring& valueName, 
+                                      const std::wstring& data) noexcept;
+    RegResult TrySetMultiStringValue(const std::wstring& valueName, 
+                                     const std::vector<std::wstring>& data);
+    RegResult TrySetBinaryValue(const std::wstring& valueName, 
+                                const std::vector<BYTE>& data) noexcept;
+    RegResult TrySetBinaryValue(const std::wstring& valueName, 
+                                const void* data, DWORD dataSize) noexcept;
+
+
 
     //
     // Registry Value Getters
@@ -219,7 +267,7 @@ public:
     ULONGLONG GetQwordValue(const std::wstring& valueName) const;
     std::wstring GetStringValue(const std::wstring& valueName) const;
     
-    enum class ExpandStringOption
+    enum class ExpandStringOption 
     {
         DontExpand,
         Expand
@@ -232,6 +280,21 @@ public:
 
     std::vector<std::wstring> GetMultiStringValue(const std::wstring& valueName) const;
     std::vector<BYTE> GetBinaryValue(const std::wstring& valueName) const;
+
+
+    RegResult TryGetDwordValue(const std::wstring& valueName, DWORD& result) const noexcept;
+    RegResult TryGetQwordValue(const std::wstring& valueName, ULONGLONG& result) const noexcept;
+    RegResult TryGetStringValue(const std::wstring& valueName, std::wstring& result) const;
+
+    RegResult TryGetExpandStringValue(
+        const std::wstring& valueName,
+        std::wstring& result,
+        ExpandStringOption expandOption = ExpandStringOption::DontExpand
+    ) const;
+
+    RegResult TryGetMultiStringValue(const std::wstring& valueName, 
+                                     std::vector<std::wstring>& result) const;
+    RegResult TryGetBinaryValue(const std::wstring& valueName, std::vector<BYTE>& result) const;
 
 
     //
@@ -251,6 +314,22 @@ public:
     // the DWORD is the value type.
     std::vector<std::pair<std::wstring, DWORD>> EnumValues() const;
 
+    // Enumerate the subkeys of the registry key, using RegEnumKeyEx
+    RegResult TryEnumSubKeys(std::vector<std::wstring>& subKeys) const;
+
+    // Enumerate the values under the registry key, using RegEnumValue.
+    // Returns a vector of pairs: In each pair, the wstring is the value name, 
+    // the DWORD is the value type.
+    RegResult TryEnumValues(std::vector<std::pair<std::wstring, DWORD>>& values) const;
+
+
+    RegResult TryQueryInfoKey(DWORD& subKeys, 
+                              DWORD &values, 
+                              FILETIME& lastWriteTime) const noexcept;
+
+    // Return the DWORD type ID for the input registry value
+    RegResult TryQueryValueType(const std::wstring& valueName, DWORD& typeId) const noexcept;
+
 
     //
     // Misc Registry API Wrappers
@@ -262,11 +341,24 @@ public:
     void CopyTree(const std::wstring& sourceSubKey, const RegKey& destKey);
     void FlushKey();
     void LoadKey(const std::wstring& subKey, const std::wstring& filename);
-    void SaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes);
+    void SaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes) const;
     void EnableReflectionKey();
     void DisableReflectionKey();
-    bool QueryReflectionKey();
+    bool QueryReflectionKey() const;
     void ConnectRegistry(const std::wstring& machineName, HKEY hKeyPredefined);
+
+    RegResult TryDeleteValue(const std::wstring& valueName) noexcept;
+    RegResult TryDeleteKey(const std::wstring& subKey, REGSAM desiredAccess) noexcept;
+    RegResult TryDeleteTree(const std::wstring& subKey) noexcept;
+    RegResult TryCopyTree(const std::wstring& sourceSubKey, const RegKey& destKey) noexcept;
+    RegResult TryFlushKey() noexcept;
+    RegResult TryLoadKey(const std::wstring& subKey, const std::wstring& filename) noexcept;
+    RegResult TrySaveKey(const std::wstring& filename, 
+                         SECURITY_ATTRIBUTES* securityAttributes) const noexcept;
+    RegResult TryEnableReflectionKey() noexcept;
+    RegResult TryDisableReflectionKey() noexcept;
+    RegResult TryQueryReflectionKey(bool& isReflected) const noexcept;
+    RegResult TryConnectRegistry(const std::wstring& machineName, HKEY hKeyPredefined) noexcept;
 
 
     // Return a string representation of Windows registry types
@@ -280,7 +372,48 @@ public:
 
 private:
     // The wrapped registry key handle
-    HKEY m_hKey{ nullptr };
+    HKEY m_hKey = nullptr;
+};
+
+
+//------------------------------------------------------------------------------
+// A simple wrapper around LONG return codes used by the Windows Registry API.
+//------------------------------------------------------------------------------
+class RegResult 
+{
+public:
+
+    RegResult() noexcept
+        : m_result( ERROR_SUCCESS ) 
+    {}
+
+    RegResult(LONG result) noexcept
+        : m_result( result ) 
+    {}
+
+    bool IsOk() const noexcept 
+    {
+        return m_result == ERROR_SUCCESS;
+    }
+
+    bool Failed() const noexcept 
+    {
+        return m_result != ERROR_SUCCESS;
+    }
+
+    explicit operator bool() const noexcept 
+    {
+        return IsOk();
+    }
+
+    LONG Get() const noexcept 
+    {
+        return m_result;
+    }
+
+private:
+    // Error code returned by Windows Registry C API
+    LONG m_result;
 };
 
 
@@ -288,28 +421,16 @@ private:
 // An exception representing an error with the registry operations
 //------------------------------------------------------------------------------
 class RegException
-    : public std::runtime_error
+    : public std::system_error
 {
 public:
-    RegException(const char* message, LONG errorCode)
-        : std::runtime_error{ message }
-        , m_errorCode{ errorCode }
+    RegException(LONG errorCode, const char* message)
+        : std::system_error(errorCode, std::system_category(), message)
     {}
 
-    RegException(const std::string& message, LONG errorCode)
-        : std::runtime_error{ message }
-        , m_errorCode{ errorCode }
+    RegException(LONG errorCode, const std::string& message)
+        : std::system_error(errorCode, std::system_category(), message)
     {}
-
-    // Get the error code returned by Windows registry APIs
-    LONG ErrorCode() const noexcept
-    {
-        return m_errorCode;
-    }
-
-private:
-    // Error code, as returned by Windows registry APIs
-    LONG m_errorCode;
 };
 
 
@@ -353,8 +474,9 @@ inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
 //------------------------------------------------------------------------------
 
 inline RegKey::RegKey(const HKEY hKey) noexcept
-    : m_hKey{ hKey }
-{}
+    : m_hKey( hKey )
+{
+}
 
 
 inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey)
@@ -370,7 +492,7 @@ inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey, REGSAM 
 
 
 inline RegKey::RegKey(RegKey&& other) noexcept
-    : m_hKey{ other.m_hKey }
+    : m_hKey( other.m_hKey )
 {
     // Other doesn't own the handle anymore
     other.m_hKey = nullptr;
@@ -458,7 +580,7 @@ inline bool RegKey::IsPredefined() const noexcept
 
 inline HKEY RegKey::Detach() noexcept
 {
-    HKEY hKey{ m_hKey };
+    HKEY hKey = m_hKey;
 
     // We don't own the HKEY handle anymore
     m_hKey = nullptr;
@@ -513,64 +635,18 @@ inline void RegKey::Create(
 }
 
 
-inline void RegKey::Create(
+inline RegResult RegKey::TryCreate(
     const HKEY                  hKeyParent,
     const std::wstring&         subKey,
-    const REGSAM                desiredAccess,
-    const DWORD                 options,
-    SECURITY_ATTRIBUTES* const  securityAttributes,
-    DWORD* const                disposition
-)
+    const REGSAM                desiredAccess
+) noexcept
 {
-    HKEY hKey{ nullptr };
-    LONG retCode = ::RegCreateKeyEx(
-        hKeyParent,
-        subKey.c_str(),
-        0,          // reserved
-        REG_NONE,   // user-defined class type parameter not supported
-        options,
-        desiredAccess,
-        securityAttributes,
-        &hKey,
-        disposition
+    constexpr DWORD kDefaultOptions = REG_OPTION_NON_VOLATILE;
+
+    return TryCreate(hKeyParent, subKey, desiredAccess, kDefaultOptions,
+        nullptr, // no security attributes,
+        nullptr  // no disposition 
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "RegCreateKeyEx failed.", retCode };
-    }
-
-    // Safely close any previously opened key
-    Close();
-
-    // Take ownership of the newly created key
-    m_hKey = hKey;
-}
-
-
-inline void RegKey::Open(
-    const HKEY              hKeyParent, 
-    const std::wstring&     subKey, 
-    const REGSAM            desiredAccess
-)
-{
-    HKEY hKey{ nullptr };
-    LONG retCode = ::RegOpenKeyEx(
-        hKeyParent,
-        subKey.c_str(),
-        REG_NONE,           // default options
-        desiredAccess,
-        &hKey
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "RegOpenKeyEx failed.", retCode };
-    }
-
-    // Safely close any previously opened key
-    Close();
-
-    // Take ownership of the newly created key
-    m_hKey = hKey;
 }
 
 
@@ -578,7 +654,7 @@ inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD dat
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey, 
         valueName.c_str(), 
         0, // reserved
@@ -588,7 +664,7 @@ inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD dat
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write DWORD value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write DWORD value: RegSetValueEx failed." );
     }
 }
 
@@ -597,7 +673,7 @@ inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey,
         valueName.c_str(),
         0, // reserved
@@ -607,7 +683,7 @@ inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write QWORD value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write QWORD value: RegSetValueEx failed.");
     }
 }
 
@@ -619,7 +695,7 @@ inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wst
     // String size including the terminating NUL, in bytes
     const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
     
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey,
         valueName.c_str(),
         0, // reserved
@@ -629,7 +705,7 @@ inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wst
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write string value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write string value: RegSetValueEx failed.");
     }
 }
 
@@ -641,7 +717,7 @@ inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const st
     // String size including the terminating NUL, in bytes
     const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
 
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey,
         valueName.c_str(),
         0, // reserved
@@ -651,81 +727,7 @@ inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const st
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write expand string value: RegSetValueEx failed.", retCode };
-    }
-}
-
-
-namespace details
-{
-
-// Helper function to build a multi-string from a vector<wstring>
-inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& data)
-{
-    // Special case of the empty multi-string
-    if (data.empty())
-    {
-        // Build a vector containing just two NULs
-        return std::vector<wchar_t>(2, L'\0');
-    }
-
-    // Get the total length in wchar_ts of the multi-string
-    size_t totalLen = 0;
-    for (const auto& s : data)
-    {
-        // Add one to current string's length for the terminating NUL
-        totalLen += (s.length() + 1);
-    }
-
-    // Add one for the last NUL terminator (making the whole structure double-NUL terminated)
-    totalLen++;
-
-    // Allocate a buffer to store the multi-string
-    std::vector<wchar_t> multiString;
-    multiString.reserve(totalLen);
-
-    // Copy the single strings into the multi-string
-    for (const auto& s : data)
-    {      
-        multiString.insert(multiString.end(), s.begin(), s.end());
-        
-        // Don't forget to NUL-terminate the current string
-        multiString.push_back(L'\0');
-    }
-
-    // Add the last NUL-terminator
-    multiString.push_back(L'\0');
-
-    return multiString;
-}
-
-} // namespace details
-
-
-inline void RegKey::SetMultiStringValue(
-    const std::wstring& valueName, 
-    const std::vector<std::wstring>& data
-)
-{
-    _ASSERTE(IsValid());
-
-    // First, we have to build a double-NUL-terminated multi-string from the input data
-    const std::vector<wchar_t> multiString = details::BuildMultiString(data);
-
-    // Total size, in bytes, of the whole multi-string structure
-    const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
-
-    LONG retCode = ::RegSetValueEx(
-        m_hKey,
-        valueName.c_str(),
-        0, // reserved
-        REG_MULTI_SZ,
-        reinterpret_cast<const BYTE*>(&multiString[0]),
-        dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot write multi-string value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write expand string value: RegSetValueEx failed.");
     }
 }
 
@@ -737,7 +739,7 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
     // Total data size, in bytes
     const DWORD dataSize = static_cast<DWORD>(data.size());
 
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey,
         valueName.c_str(),
         0, // reserved
@@ -747,7 +749,7 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write binary data value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write binary data value: RegSetValueEx failed.");
     }
 }
 
@@ -760,7 +762,7 @@ inline void RegKey::SetBinaryValue(
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegSetValueEx(
+    LONG retCode = ::RegSetValueExW(
         m_hKey,
         valueName.c_str(),
         0, // reserved
@@ -770,8 +772,115 @@ inline void RegKey::SetBinaryValue(
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot write binary data value: RegSetValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot write binary data value: RegSetValueEx failed.");
     }
+}
+
+
+inline RegResult RegKey::TrySetDwordValue(const std::wstring& valueName, const DWORD data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_DWORD,
+        reinterpret_cast<const BYTE*>(&data),
+        sizeof(data)
+    );
+}
+
+
+inline RegResult RegKey::TrySetQwordValue(const std::wstring& valueName, 
+                                          const ULONGLONG& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_QWORD,
+        reinterpret_cast<const BYTE*>(&data),
+        sizeof(data)
+    );
+}
+
+
+inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName, 
+                                           const std::wstring& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // String size including the terminating NUL, in bytes
+    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_SZ,
+        reinterpret_cast<const BYTE*>(data.c_str()),
+        dataSize
+    );
+}
+
+
+inline RegResult RegKey::TrySetExpandStringValue(const std::wstring& valueName, 
+                                                 const std::wstring& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // String size including the terminating NUL, in bytes
+    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_EXPAND_SZ,
+        reinterpret_cast<const BYTE*>(data.c_str()),
+        dataSize
+    );
+}
+
+
+inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName, 
+                                           const std::vector<BYTE>& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // Total data size, in bytes
+    const DWORD dataSize = static_cast<DWORD>(data.size());
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_BINARY,
+        &data[0],
+        dataSize
+    );
+}
+
+
+inline RegResult RegKey::TrySetBinaryValue(
+    const std::wstring& valueName,
+    const void* const data,
+    const DWORD dataSize
+) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_BINARY,
+        static_cast<const BYTE*>(data),
+        dataSize
+    );
 }
 
 
@@ -783,7 +892,7 @@ inline DWORD RegKey::GetDwordValue(const std::wstring& valueName) const
     DWORD dataSize = sizeof(data);  // size of data, in bytes
 
     const DWORD flags = RRF_RT_REG_DWORD;
-    LONG retCode = ::RegGetValue(
+    LONG retCode = ::RegGetValueW(
         m_hKey,
         nullptr, // no subkey
         valueName.c_str(),
@@ -794,7 +903,7 @@ inline DWORD RegKey::GetDwordValue(const std::wstring& valueName) const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot get DWORD value: RegGetValue failed.", retCode };
+        throw RegException(retCode, "Cannot get DWORD value: RegGetValue failed.");
     }
 
     return data;
@@ -805,11 +914,11 @@ inline ULONGLONG RegKey::GetQwordValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
-    ULONGLONG data{};               // to be read from the registry
+    ULONGLONG data{};                 // to be read from the registry
     DWORD dataSize = sizeof(data);  // size of data, in bytes
 
     const DWORD flags = RRF_RT_REG_QWORD;
-    LONG retCode = ::RegGetValue(
+    LONG retCode = ::RegGetValueW(
         m_hKey,
         nullptr, // no subkey
         valueName.c_str(),
@@ -820,228 +929,74 @@ inline ULONGLONG RegKey::GetQwordValue(const std::wstring& valueName) const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot get QWORD value: RegGetValue failed.", retCode };
+        throw RegException(retCode, "Cannot get QWORD value: RegGetValue failed.");
     }
 
     return data;
 }
 
 
-inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
+inline RegResult RegKey::TryGetDwordValue(const std::wstring& valueName, 
+                                          DWORD& result) const noexcept
 {
     _ASSERTE(IsValid());
 
-    // Get the size of the result string
-    DWORD dataSize = 0; // size of data, in bytes
-    const DWORD flags = RRF_RT_REG_SZ;
-    LONG retCode = ::RegGetValue(
+    result = 0;
+
+    DWORD data{};                   // to be read from the registry
+    DWORD dataSize = sizeof(data);  // size of data, in bytes
+
+    const DWORD flags = RRF_RT_REG_DWORD;
+    RegResult retCode = ::RegGetValueW(
         m_hKey,
         nullptr, // no subkey
         valueName.c_str(),
         flags,
         nullptr, // type not required
-        nullptr, // output buffer not needed now
+        &data,
         &dataSize
     );
-    if (retCode != ERROR_SUCCESS)
+    if (retCode.Failed())
     {
-        throw RegException{ "Cannot get size of string value: RegGetValue failed.", retCode };
+        result = 0;
+        return retCode;
     }
 
-    // Allocate a string of proper size.
-    // Note that dataSize is in bytes and includes the terminating NUL;
-    // we have to convert the size from bytes to wchar_ts for wstring::resize.
-    std::wstring result;
-    result.resize(dataSize / sizeof(wchar_t));
-
-    // Call RegGetValue for the second time to read the string's content
-    retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get string value: RegGetValue failed.", retCode };
-    }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
-
-    return result;
+    result = data;
+    _ASSERTE(retCode.IsOk());
+    return retCode;
 }
 
 
-inline std::wstring RegKey::GetExpandStringValue(
-    const std::wstring& valueName, 
-    const ExpandStringOption expandOption
-) const
+inline RegResult RegKey::TryGetQwordValue(const std::wstring& valueName, 
+                                          ULONGLONG& result) const noexcept
 {
     _ASSERTE(IsValid());
 
-    DWORD flags = RRF_RT_REG_EXPAND_SZ;
+    result = 0;
 
-    // Adjust the flag for RegGetValue considering the expand string option specified by the caller   
-    if (expandOption == ExpandStringOption::DontExpand)
-    {
-        flags |= RRF_NOEXPAND;
-    }
+    ULONGLONG data{};                 // to be read from the registry
+    DWORD dataSize = sizeof(data);  // size of data, in bytes
 
-    // Get the size of the result string
-    DWORD dataSize = 0; // size of data, in bytes
-    LONG retCode = ::RegGetValue(
+    const DWORD flags = RRF_RT_REG_QWORD;
+    RegResult retCode = ::RegGetValueW(
         m_hKey,
-        nullptr,    // no subkey
+        nullptr, // no subkey
         valueName.c_str(),
         flags,
-        nullptr,    // type not required
-        nullptr,    // output buffer not needed now
+        nullptr, // type not required
+        &data,
         &dataSize
     );
-    if (retCode != ERROR_SUCCESS)
+    if (retCode.Failed())
     {
-        throw RegException{ "Cannot get size of expand string value: RegGetValue failed.", retCode };
+        result = 0;
+        return retCode;
     }
 
-    // Allocate a string of proper size.
-    // Note that dataSize is in bytes and includes the terminating NUL.
-    // We must convert from bytes to wchar_ts for wstring::resize.
-    std::wstring result;
-    result.resize(dataSize / sizeof(wchar_t));
-
-    // Call RegGetValue for the second time to read the string's content
-    retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get expand string value: RegGetValue failed.", retCode };
-    }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
-
-    return result;
-}
-
-
-inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring& valueName) const
-{
-    _ASSERTE(IsValid());
-
-    // Request the size of the multi-string, in bytes
-    DWORD dataSize = 0;
-    const DWORD flags = RRF_RT_REG_MULTI_SZ;
-    LONG retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // type not required
-        nullptr,    // output buffer not needed now
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get size of multi-string value: RegGetValue failed.", retCode };
-    }
-
-    // Allocate room for the result multi-string.
-    // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size 
-    // to be expressed in wchar_ts.
-    std::vector<wchar_t> data;
-    data.resize(dataSize / sizeof(wchar_t));
-
-    // Read the multi-string from the registry into the vector object
-    retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // no type required
-        &data[0],   // output buffer
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get multi-string value: RegGetValue failed.", retCode };
-    }
-
-    // Resize vector to the actual size returned by GetRegValue.
-    // Note that the vector is a vector of wchar_ts, instead the size returned by GetRegValue
-    // is in bytes, so we have to scale from bytes to wchar_t count.
-    data.resize(dataSize / sizeof(wchar_t));
-
-    // Parse the double-NUL-terminated string into a vector<wstring>, 
-    // which will be returned to the caller
-    std::vector<std::wstring> result;
-    const wchar_t* currStringPtr = &data[0];
-    while (*currStringPtr != L'\0')
-    {
-        // Current string is NUL-terminated, so get its length calling wcslen
-        const size_t currStringLength = wcslen(currStringPtr);
-
-        // Add current string to the result vector
-        result.push_back(std::wstring{ currStringPtr, currStringLength });
-
-        // Move to the next string
-        currStringPtr += currStringLength + 1;
-    }
-
-    return result;
-}
-
-
-inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) const
-{
-    _ASSERTE(IsValid());
-
-    // Get the size of the binary data
-    DWORD dataSize = 0; // size of data, in bytes
-    const DWORD flags = RRF_RT_REG_BINARY;
-    LONG retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // type not required
-        nullptr,    // output buffer not needed now
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get size of binary data: RegGetValue failed.", retCode };
-    }
-
-    // Allocate a buffer of proper size to store the binary data
-    std::vector<BYTE> data(dataSize);
-
-    // Call RegGetValue for the second time to read the data content
-    retCode = ::RegGetValue(
-        m_hKey,
-        nullptr,    // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr,    // type not required
-        &data[0],   // output buffer
-        &dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "Cannot get binary data: RegGetValue failed.", retCode };
-    }
-
-    return data;
+    result = data;
+    _ASSERTE(retCode.IsOk());
+    return retCode;
 }
 
 
@@ -1051,7 +1006,7 @@ inline DWORD RegKey::QueryValueType(const std::wstring& valueName) const
 
     DWORD typeId{};     // will be returned by RegQueryValueEx
 
-    LONG retCode = ::RegQueryValueEx(
+    LONG retCode = ::RegQueryValueExW(
         m_hKey,
         valueName.c_str(),
         nullptr,    // reserved
@@ -1062,7 +1017,7 @@ inline DWORD RegKey::QueryValueType(const std::wstring& valueName) const
 
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "Cannot get the value type: RegQueryValueEx failed.", retCode };
+        throw RegException(retCode, "Cannot get the value type: RegQueryValueEx failed.");
     }
 
     return typeId;
@@ -1073,7 +1028,11 @@ inline void RegKey::QueryInfoKey(DWORD& subKeys, DWORD &values, FILETIME& lastWr
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegQueryInfoKey(
+    subKeys = 0;
+    values = 0;
+    lastWriteTime.dwLowDateTime = lastWriteTime.dwHighDateTime = 0;
+
+    LONG retCode = ::RegQueryInfoKeyW(
         m_hKey,
         nullptr,
         nullptr,
@@ -1089,152 +1048,52 @@ inline void RegKey::QueryInfoKey(DWORD& subKeys, DWORD &values, FILETIME& lastWr
     );
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegQueryInfoKey failed.", retCode };
+        throw RegException(retCode, "RegQueryInfoKey failed.");
     }
 }
 
 
-inline std::vector<std::wstring> RegKey::EnumSubKeys() const
+inline RegResult RegKey::TryQueryValueType(const std::wstring& valueName, 
+                                           DWORD& typeId) const noexcept
 {
     _ASSERTE(IsValid());
 
-    // Get some useful enumeration info, like the total number of subkeys
-    // and the maximum length of the subkey names
-    DWORD subKeyCount{};
-    DWORD maxSubKeyNameLen{};
-    LONG retCode = ::RegQueryInfoKey(
+    typeId = 0;
+
+    return ::RegQueryValueExW(
         m_hKey,
-        nullptr,    // no user-defined class
-        nullptr,    // no user-defined class size
+        valueName.c_str(),
         nullptr,    // reserved
-        &subKeyCount,
-        &maxSubKeyNameLen,
-        nullptr,    // no subkey class length
-        nullptr,    // no value count
-        nullptr,    // no value name max length
-        nullptr,    // no max value length
-        nullptr,    // no security descriptor
-        nullptr     // no last write time
+        &typeId,
+        nullptr,    // not interested
+        nullptr     // not interested
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ "RegQueryInfoKey failed while preparing for subkey enumeration.", retCode };
-    }
-
-    // NOTE: According to the MSDN documentation, the size returned for subkey name max length
-    // does *not* include the terminating NUL, so let's add +1 to take it into account
-    // when I allocate the buffer for reading subkey names.
-    maxSubKeyNameLen++;
-
-    // Preallocate a buffer for the subkey names
-    auto nameBuffer = std::make_unique<wchar_t[]>(maxSubKeyNameLen);
-
-    // The result subkey names will be stored here
-    std::vector<std::wstring> subkeyNames;
-
-    // Enumerate all the subkeys
-    for (DWORD index = 0; index < subKeyCount; index++)
-    {
-        // Get the name of the current subkey
-        DWORD subKeyNameLen = maxSubKeyNameLen;
-        retCode = ::RegEnumKeyEx(
-            m_hKey,
-            index,
-            nameBuffer.get(),
-            &subKeyNameLen,
-            nullptr, // reserved
-            nullptr, // no class
-            nullptr, // no class
-            nullptr  // no last write time
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ "Cannot enumerate subkeys: RegEnumKeyEx failed.", retCode };
-        }
-
-        // On success, the ::RegEnumKeyEx API writes the length of the
-        // subkey name in the subKeyNameLen output parameter 
-        // (not including the terminating NUL).
-        // So I can build a wstring based on that length.
-        subkeyNames.push_back(std::wstring{ nameBuffer.get(), subKeyNameLen });
-    }
-
-    return subkeyNames;
 }
 
 
-inline std::vector<std::pair<std::wstring, DWORD>> RegKey::EnumValues() const
+inline RegResult RegKey::TryQueryInfoKey(DWORD& subKeys, DWORD &values, 
+                                         FILETIME& lastWriteTime) const noexcept
 {
     _ASSERTE(IsValid());
 
-    // Get useful enumeration info, like the total number of values
-    // and the maximum length of the value names
-    DWORD valueCount{};
-    DWORD maxValueNameLen{};
-    LONG retCode = ::RegQueryInfoKey(
+    subKeys = 0;
+    values = 0;
+    lastWriteTime.dwLowDateTime = lastWriteTime.dwHighDateTime = 0;
+
+    return ::RegQueryInfoKeyW(
         m_hKey,
-        nullptr,    // no user-defined class
-        nullptr,    // no user-defined class size
-        nullptr,    // reserved
-        nullptr,    // no subkey count
-        nullptr,    // no subkey max length
-        nullptr,    // no subkey class length
-        &valueCount,
-        &maxValueNameLen,
-        nullptr,    // no max value length
-        nullptr,    // no security descriptor
-        nullptr     // no last write time
+        nullptr,
+        nullptr,
+        nullptr,
+        &subKeys,
+        nullptr,
+        nullptr,
+        &values,
+        nullptr,
+        nullptr,
+        nullptr,
+        &lastWriteTime
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{
-            "RegQueryInfoKey failed while preparing for value enumeration.",
-            retCode
-        };
-    }
-
-    // NOTE: According to the MSDN documentation, the size returned for value name max length
-    // does *not* include the terminating NUL, so let's add +1 to take it into account
-    // when I allocate the buffer for reading value names.
-    maxValueNameLen++;
-
-    // Preallocate a buffer for the value names
-    auto nameBuffer = std::make_unique<wchar_t[]>(maxValueNameLen);
-
-    // The value names and types will be stored here
-    std::vector<std::pair<std::wstring, DWORD>> valueInfo;
-
-    // Enumerate all the values
-    for (DWORD index = 0; index < valueCount; index++)
-    {
-        // Get the name and the type of the current value
-        DWORD valueNameLen = maxValueNameLen;
-        DWORD valueType{};
-        retCode = ::RegEnumValue(
-            m_hKey,
-            index,
-            nameBuffer.get(),
-            &valueNameLen,
-            nullptr,    // reserved
-            &valueType,
-            nullptr,    // no data
-            nullptr     // no data size
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ "Cannot enumerate values: RegEnumValue failed.", retCode };
-        }
-
-        // On success, the RegEnumValue API writes the length of the
-        // value name in the valueNameLen output parameter 
-        // (not including the terminating NUL).
-        // So we can build a wstring based on that.
-        valueInfo.push_back(
-            std::make_pair(std::wstring{ nameBuffer.get(), valueNameLen }, valueType)
-        );
-    }
-
-    return valueInfo;
 }
 
 
@@ -1242,10 +1101,10 @@ inline void RegKey::DeleteValue(const std::wstring& valueName)
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegDeleteValue(m_hKey, valueName.c_str());
+    LONG retCode = ::RegDeleteValueW(m_hKey, valueName.c_str());
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegDeleteValue failed.", retCode };
+        throw RegException(retCode, "RegDeleteValue failed.");
     }
 }
 
@@ -1254,10 +1113,10 @@ inline void RegKey::DeleteKey(const std::wstring& subKey, const REGSAM desiredAc
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegDeleteKeyEx(m_hKey, subKey.c_str(), desiredAccess, 0);
+    LONG retCode = ::RegDeleteKeyExW(m_hKey, subKey.c_str(), desiredAccess, 0);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegDeleteKeyEx failed.", retCode };
+        throw RegException(retCode, "RegDeleteKeyEx failed.");
     }
 }
 
@@ -1266,10 +1125,10 @@ inline void RegKey::DeleteTree(const std::wstring& subKey)
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegDeleteTree(m_hKey, subKey.c_str());
+    LONG retCode = ::RegDeleteTreeW(m_hKey, subKey.c_str());
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegDeleteTree failed.", retCode };
+        throw RegException(retCode, "RegDeleteTree failed.");
     }
 }
 
@@ -1278,10 +1137,10 @@ inline void RegKey::CopyTree(const std::wstring& sourceSubKey, const RegKey& des
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegCopyTree(m_hKey, sourceSubKey.c_str(), destKey.Get());
+    LONG retCode = ::RegCopyTreeW(m_hKey, sourceSubKey.c_str(), destKey.Get());
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegCopyTree failed.", retCode };
+        throw RegException(retCode, "RegCopyTree failed.");
     }
 }
 
@@ -1293,7 +1152,7 @@ inline void RegKey::FlushKey()
     LONG retCode = ::RegFlushKey(m_hKey);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegFlushKey failed.", retCode };
+        throw RegException(retCode, "RegFlushKey failed.");
     }
 }
 
@@ -1302,10 +1161,10 @@ inline void RegKey::LoadKey(const std::wstring& subKey, const std::wstring& file
 {
     Close();
 
-    LONG retCode = ::RegLoadKey(m_hKey, subKey.c_str(), filename.c_str());
+    LONG retCode = ::RegLoadKeyW(m_hKey, subKey.c_str(), filename.c_str());
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegLoadKey failed.", retCode };
+        throw RegException(retCode, "RegLoadKey failed.");
     }
 }
 
@@ -1313,14 +1172,14 @@ inline void RegKey::LoadKey(const std::wstring& subKey, const std::wstring& file
 inline void RegKey::SaveKey(
     const std::wstring& filename, 
     SECURITY_ATTRIBUTES* const securityAttributes
-)
+) const
 {
     _ASSERTE(IsValid());
 
-    LONG retCode = ::RegSaveKey(m_hKey, filename.c_str(), securityAttributes);
+    LONG retCode = ::RegSaveKeyW(m_hKey, filename.c_str(), securityAttributes);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegSaveKey failed.", retCode };
+        throw RegException(retCode, "RegSaveKey failed.");
     }
 }
 
@@ -1330,7 +1189,7 @@ inline void RegKey::EnableReflectionKey()
     LONG retCode = ::RegEnableReflectionKey(m_hKey);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegEnableReflectionKey failed.", retCode };
+        throw RegException(retCode, "RegEnableReflectionKey failed.");
     }
 }
 
@@ -1340,18 +1199,18 @@ inline void RegKey::DisableReflectionKey()
     LONG retCode = ::RegDisableReflectionKey(m_hKey);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegDisableReflectionKey failed.", retCode };
+        throw RegException(retCode, "RegDisableReflectionKey failed.");
     }
 }
 
 
-inline bool RegKey::QueryReflectionKey()
+inline bool RegKey::QueryReflectionKey() const
 {
     BOOL isReflectionDisabled = FALSE;
     LONG retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegQueryReflectionKey failed.", retCode };
+        throw RegException(retCode, "RegQueryReflectionKey failed.");
     }
 
     return (isReflectionDisabled ? true : false);
@@ -1364,14 +1223,102 @@ inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY 
     Close();
 
     HKEY hKeyResult{ nullptr };
-    LONG retCode = ::RegConnectRegistry(machineName.c_str(), hKeyPredefined, &hKeyResult);
+    LONG retCode = ::RegConnectRegistryW(machineName.c_str(), hKeyPredefined, &hKeyResult);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ "RegConnectRegistry failed.", retCode };
+        throw RegException(retCode, "RegConnectRegistry failed.");
     }
 
     // Take ownership of the result key
     m_hKey = hKeyResult;
+}
+
+
+
+inline RegResult RegKey::TryDeleteValue(const std::wstring& valueName) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegDeleteValueW(m_hKey, valueName.c_str());
+}
+
+
+inline RegResult RegKey::TryDeleteKey(const std::wstring& subKey, REGSAM desiredAccess) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegDeleteKeyExW(m_hKey, subKey.c_str(), desiredAccess, 0);
+}
+
+
+inline RegResult RegKey::TryDeleteTree(const std::wstring& subKey) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegDeleteTreeW(m_hKey, subKey.c_str());
+}
+
+
+inline RegResult RegKey::TryCopyTree(const std::wstring& sourceSubKey, 
+                                     const RegKey& destKey) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegCopyTreeW(m_hKey, sourceSubKey.c_str(), destKey.Get());
+}
+
+
+inline RegResult RegKey::TryFlushKey() noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegFlushKey(m_hKey);
+}
+
+
+inline RegResult RegKey::TryLoadKey(const std::wstring& subKey, 
+                                    const std::wstring& filename) noexcept
+{
+    Close();
+
+    return ::RegLoadKeyW(m_hKey, subKey.c_str(), filename.c_str());
+}
+
+
+inline RegResult RegKey::TrySaveKey(const std::wstring& filename, 
+                                    SECURITY_ATTRIBUTES* securityAttributes) const noexcept
+{
+    _ASSERTE(IsValid());
+
+    return ::RegSaveKeyW(m_hKey, filename.c_str(), securityAttributes);
+}
+
+
+inline RegResult RegKey::TryEnableReflectionKey() noexcept
+{
+    return ::RegEnableReflectionKey(m_hKey);
+}
+
+
+inline RegResult RegKey::TryDisableReflectionKey() noexcept
+{
+    return ::RegDisableReflectionKey(m_hKey);
+}
+
+
+inline RegResult RegKey::TryQueryReflectionKey(bool& reflectionDisabled) const noexcept
+{
+    BOOL isReflectionDisabled = FALSE;
+    RegResult retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
+    if (retCode.Failed())
+    {
+        return retCode;
+    }
+
+    reflectionDisabled = isReflectionDisabled ? true : false;
+    
+    _ASSERTE(retCode.IsOk());
+    return retCode;
 }
 
 
@@ -1394,4 +1341,4 @@ inline std::wstring RegKey::RegTypeToString(const DWORD regType)
 } // namespace winreg
 
 
-#endif // INCLUDE_GIOVANNI_DICANIO_WINREG_HPP
+#endif // GIOVANNI_DICANIO_WINREG_HPP_INCLUDED
