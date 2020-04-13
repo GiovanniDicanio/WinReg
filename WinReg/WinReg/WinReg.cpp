@@ -36,6 +36,9 @@
 
 #include "WinReg.hpp"       // Public header
 
+#include <memory>           // std::unique_ptr
+
+
 
 //------------------------------------------------------------------------------
 //                      Module-Private Helper Functions

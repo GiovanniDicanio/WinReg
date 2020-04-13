@@ -14,9 +14,9 @@
 //               Copyright (C) by Giovanni Dicanio 
 //  
 // First version: 2017, January 22nd
-// Last update:   2020, April 13th
+// Last update:   2020, April 14th
 // 
-// E-mail: <giovanni.dicanio AT gmail.com>
+// E-mail: <giovanni.dicanio AT REMOVE_THIS gmail.com>
 // 
 // Registry key handles are safely and conveniently wrapped 
 // in the RegKey resource manager C++ class.
@@ -62,7 +62,6 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
-#include <memory>           // std::unique_ptr
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair
@@ -1234,7 +1233,6 @@ inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY 
 }
 
 
-
 inline RegResult RegKey::TryDeleteValue(const std::wstring& valueName) noexcept
 {
     _ASSERTE(IsValid());
@@ -1286,7 +1284,7 @@ inline RegResult RegKey::TryLoadKey(const std::wstring& subKey,
 
 
 inline RegResult RegKey::TrySaveKey(const std::wstring& filename, 
-                                    SECURITY_ATTRIBUTES* securityAttributes) const noexcept
+                                    SECURITY_ATTRIBUTES* const securityAttributes) const noexcept
 {
     _ASSERTE(IsValid());
 

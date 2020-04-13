@@ -25,9 +25,9 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 
 I initially developed this code using Visual Studio 2015 with Update 3; then I used **Visual Studio 2017**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
-The library's code is split between:
-* [`WinReg.hpp`](../master/WinReg/WinReg/WinReg.hpp): which is the public header file
-* [`WinReg.cpp`](../master/WinReg/WinReg/WinReg.cpp): which contains non-inline method implementations
+The library's code is split between these two files:
+* [`WinReg.hpp`](../master/WinReg/WinReg/WinReg.hpp), which is the public header file
+* [`WinReg.cpp`](../master/WinReg/WinReg/WinReg.cpp), which contains non-inline method implementations
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -42,7 +42,7 @@ There are many member functions inside the `RegKey` class, that wrap many parts 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
-RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\Connie\\SomeKey" };
+RegKey  key(HKEY_CURRENT_USER, L"SOFTWARE\\Connie\\SomeKey");
 
 DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
 wstring s  = key.GetStringValue(L"SomeStringValue");
