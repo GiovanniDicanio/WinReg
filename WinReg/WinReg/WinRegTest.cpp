@@ -11,15 +11,30 @@
 // 
 ////////////////////////////////////////////////////////////////////////// 
 
+//
+// TODO: Need to add testing for the new TryAction() methods 
+//       (e.g TryGetDwordValue()).
+//
+
 #include "WinReg.hpp"   // Module to test
+
 #include <exception>
 #include <iostream>
+#include <string>
 #include <vector>
-using namespace std;
-using namespace winreg;
 
 
-int main()
+using std::pair;
+using std::vector;
+using std::wcout;
+using std::wstring;
+
+using winreg::RegKey;
+using winreg::RegException;
+using winreg::RegResult;
+
+
+int main() 
 {
     constexpr int kExitOk = 0;
     constexpr int kExitError = 1;
@@ -113,13 +128,13 @@ int main()
         }
 
         wstring testExpandSz1 = key.GetExpandStringValue(L"TestValueExpandString");
-        if (testExpandSz1 != testExpandSz)
+        if (testExpandSz1 != testExpandSz) 
         {
             wcout << L"RegKey::GetExpandStringValue failed.\n";
         }
 
         typeId = key.QueryValueType(L"TestValueExpandString");
-        if (typeId != REG_EXPAND_SZ)
+        if (typeId != REG_EXPAND_SZ) 
         {
             wcout << L"RegKey::QueryValueType failed for REG_EXPAND_SZ.\n";
         }
@@ -164,15 +179,16 @@ int main()
     }
     catch (const RegException& e)
     {
-        cout << "\n*** Registry Exception: " << e.what();
-        cout << "\n*** [Windows API error code = " << e.ErrorCode() << "\n\n";
+        wcout << L"\n*** Registry Exception: " << e.what();
+        wcout << L"\n*** [Windows API error code = " << e.code() << L"]\n\n";
         return kExitError;
     }
-    catch (const exception& e)
+    catch (const std::exception& e)
     {
-        cout << "\n*** ERROR: " << e.what() << '\n';
+        wcout << L"\n*** ERROR: " << e.what() << L'\n';
         return kExitError;
     }
 
     return kExitOk;
 }
+
