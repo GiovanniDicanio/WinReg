@@ -42,7 +42,7 @@ There are many member functions inside the `RegKey` class, that wrap many parts 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
-RegKey  key(HKEY_CURRENT_USER, L"SOFTWARE\\Connie\\SomeKey");
+RegKey  key(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 
 DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
 wstring s  = key.GetStringValue(L"SomeStringValue");
