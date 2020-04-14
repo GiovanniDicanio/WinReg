@@ -1,4 +1,4 @@
-# WinReg v1.9
+# WinReg v2.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -63,7 +63,10 @@ for (const auto & v : values)
     ...
 }
 ```
- 
+
+The library also offers methods that return error codes wrapped in `RegResult`, instead of throwing `RegException` on failure. These methods are named in the form of _TryAction_, e.g. `RegKey::TryOpen()`, `RegKey::TryGetDwordValue()`, etc. 
+You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
+
 The library stuff lives under the `winreg` namespace.
 
 See the [**`WinReg.hpp`**](../master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.

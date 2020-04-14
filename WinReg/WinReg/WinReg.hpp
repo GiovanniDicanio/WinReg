@@ -405,7 +405,7 @@ public:
         return IsOk();
     }
 
-    LONG Get() const noexcept 
+    LONG Code() const noexcept 
     {
         return m_result;
     }

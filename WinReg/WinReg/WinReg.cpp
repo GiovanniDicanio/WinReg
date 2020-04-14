@@ -998,9 +998,6 @@ RegResult RegKey::TryEnumValues(std::vector<std::pair<std::wstring, DWORD>>& val
     // Preallocate a buffer for the value names
     auto nameBuffer = std::make_unique<wchar_t[]>(maxValueNameLen);
 
-    // The value names and types will be stored here
-    std::vector<std::pair<std::wstring, DWORD>> valueInfo;
-
     // Should have been cleared at the beginning of the method
     _ASSERTE(values.empty());
 
@@ -1030,7 +1027,7 @@ RegResult RegKey::TryEnumValues(std::vector<std::pair<std::wstring, DWORD>>& val
         // value name in the valueNameLen output parameter 
         // (not including the terminating NUL).
         // So we can build a wstring based on that.
-        valueInfo.push_back(
+        values.push_back(
             std::make_pair(std::wstring(nameBuffer.get(), valueNameLen), valueType)
         );
     }
