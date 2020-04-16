@@ -1,4 +1,4 @@
-# WinReg v2.1.0
+# WinReg v2.1.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -26,8 +26,8 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 I initially developed this code using Visual Studio 2015 with Update 3; then I used **Visual Studio 2017**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
 The library's code is split between these two files:
-* [`WinReg.hpp`](../master/WinReg/WinReg.hpp), which is the public header file
-* [`WinReg.cpp`](../master/WinReg/WinReg.cpp), which contains non-inline method implementations
+* [`WinReg.hpp`](../master/WinReg/WinReg/WinReg.hpp), which is the public header file
+* [`WinReg.cpp`](../master/WinReg/WinReg/WinReg.cpp), which contains non-inline method implementations
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -69,7 +69,7 @@ You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
 
-See the [**`WinReg.hpp`**](../master/WinReg/WinReg.hpp) header for more details and **documentation**.
+See the [**`WinReg.hpp`**](../master/WinReg/WinReg/WinReg.hpp) header for more details and **documentation**.
 
 Thanks to everyone who contributed to this project with some additional features and constructive comments and suggestions.
 

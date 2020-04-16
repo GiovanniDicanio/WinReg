@@ -14,7 +14,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2020, April 15th
+// Last update:   2020, April 16th
 //
 // E-mail: <giovanni.dicanio AT REMOVE_THIS gmail.com>
 //
@@ -394,10 +394,11 @@ class WINREG_API RegResult
 {
 public:
 
-    RegResult() noexcept
-        : m_result( ERROR_SUCCESS )
-    {}
+    RegResult() noexcept = default;
 
+    // Conversion constructor, *not* marked "explicit" on purpose,
+    // allows easy and convenient conversion from Win32 API return code type
+    // to this C++ wrapper.
     RegResult(LONG result) noexcept
         : m_result( result )
     {}
@@ -423,11 +424,19 @@ public:
     }
 
     // Return the system error message associated to the current error code
-    std::wstring ErrorMessage() const;
+    std::wstring ErrorMessage() const
+    {
+        return ErrorMessage(MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT));
+    }
+
+    // Return the system error message associated to the current error code,
+    // using the given input language identifier
+    std::wstring ErrorMessage(DWORD languageId) const;
 
 private:
-    // Error code returned by Windows Registry C API
-    LONG m_result;
+    // Error code returned by Windows Registry C API;
+    // default initialized to success code.
+    LONG m_result = ERROR_SUCCESS;
 };
 
 
@@ -499,7 +508,7 @@ inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey)
 }
 
 
-inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey, REGSAM desiredAccess)
+inline RegKey::RegKey(const HKEY hKeyParent, const std::wstring& subKey, const REGSAM desiredAccess)
 {
     Create(hKeyParent, subKey, desiredAccess);
 }
@@ -822,8 +831,10 @@ inline RegResult RegKey::TrySetQwordValue(const std::wstring& valueName,
 }
 
 
-inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName,
-                                           const std::wstring& data) noexcept
+inline RegResult RegKey::TrySetStringValue(
+    const std::wstring& valueName,
+    const std::wstring& data
+) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -841,8 +852,10 @@ inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName,
 }
 
 
-inline RegResult RegKey::TrySetExpandStringValue(const std::wstring& valueName,
-                                                 const std::wstring& data) noexcept
+inline RegResult RegKey::TrySetExpandStringValue(
+    const std::wstring& valueName,
+    const std::wstring& data
+) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -860,8 +873,10 @@ inline RegResult RegKey::TrySetExpandStringValue(const std::wstring& valueName,
 }
 
 
-inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
-                                           const std::vector<BYTE>& data) noexcept
+inline RegResult RegKey::TrySetBinaryValue(
+    const std::wstring& valueName,
+    const std::vector<BYTE>& data
+) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -950,8 +965,10 @@ inline ULONGLONG RegKey::GetQwordValue(const std::wstring& valueName) const
 }
 
 
-inline RegResult RegKey::TryGetDwordValue(const std::wstring& valueName,
-                                          DWORD& result) const noexcept
+inline RegResult RegKey::TryGetDwordValue(
+    const std::wstring& valueName,
+    DWORD& result
+) const noexcept
 {
     _ASSERTE(IsValid());
 
@@ -982,8 +999,10 @@ inline RegResult RegKey::TryGetDwordValue(const std::wstring& valueName,
 }
 
 
-inline RegResult RegKey::TryGetQwordValue(const std::wstring& valueName,
-                                          ULONGLONG& result) const noexcept
+inline RegResult RegKey::TryGetQwordValue(
+    const std::wstring& valueName,
+    ULONGLONG& result
+) const noexcept
 {
     _ASSERTE(IsValid());
 
@@ -1067,8 +1086,10 @@ inline void RegKey::QueryInfoKey(DWORD& subKeys, DWORD &values, FILETIME& lastWr
 }
 
 
-inline RegResult RegKey::TryQueryValueType(const std::wstring& valueName,
-                                           DWORD& typeId) const noexcept
+inline RegResult RegKey::TryQueryValueType(
+    const std::wstring& valueName,
+    DWORD& typeId
+) const noexcept
 {
     _ASSERTE(IsValid());
 
@@ -1085,8 +1106,11 @@ inline RegResult RegKey::TryQueryValueType(const std::wstring& valueName,
 }
 
 
-inline RegResult RegKey::TryQueryInfoKey(DWORD& subKeys, DWORD &values,
-                                         FILETIME& lastWriteTime) const noexcept
+inline RegResult RegKey::TryQueryInfoKey(
+    DWORD& subKeys,
+    DWORD &values,
+    FILETIME& lastWriteTime
+) const noexcept
 {
     _ASSERTE(IsValid());
 
@@ -1272,8 +1296,10 @@ inline RegResult RegKey::TryDeleteTree(const std::wstring& subKey) noexcept
 }
 
 
-inline RegResult RegKey::TryCopyTree(const std::wstring& sourceSubKey,
-                                     const RegKey& destKey) noexcept
+inline RegResult RegKey::TryCopyTree(
+    const std::wstring& sourceSubKey,
+    const RegKey& destKey
+) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -1289,8 +1315,10 @@ inline RegResult RegKey::TryFlushKey() noexcept
 }
 
 
-inline RegResult RegKey::TryLoadKey(const std::wstring& subKey,
-                                    const std::wstring& filename) noexcept
+inline RegResult RegKey::TryLoadKey(
+    const std::wstring& subKey,
+    const std::wstring& filename
+) noexcept
 {
     Close();
 
@@ -1298,8 +1326,10 @@ inline RegResult RegKey::TryLoadKey(const std::wstring& subKey,
 }
 
 
-inline RegResult RegKey::TrySaveKey(const std::wstring& filename,
-                                    SECURITY_ATTRIBUTES* const securityAttributes) const noexcept
+inline RegResult RegKey::TrySaveKey(
+    const std::wstring& filename,
+    SECURITY_ATTRIBUTES* const securityAttributes
+) const noexcept
 {
     _ASSERTE(IsValid());
 

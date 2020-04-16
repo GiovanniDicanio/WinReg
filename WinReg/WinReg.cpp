@@ -41,13 +41,88 @@
 
 
 //------------------------------------------------------------------------------
-//                      Module-Private Helper Functions
+//              Module-Private Helper Classes and Functions
 //------------------------------------------------------------------------------
 
 namespace
 {
 
-// Helper function to build a multi-string from a vector<wstring>
+//------------------------------------------------------------------------------
+// Simple scoped-based RAII wrapper that *automatically* invokes ::LocalFree()
+// in its destructor.
+//------------------------------------------------------------------------------
+template <typename T>
+class ScopedLocalFree
+{
+public:
+
+    typedef T  Type;
+    typedef T* TypePtr;
+
+
+    // Init wrapped pointer to nullptr
+    ScopedLocalFree() noexcept = default;
+
+    // Automatically and safely invoke ::LocalFree()
+    ~ScopedLocalFree() noexcept
+    {
+        Free();
+    }
+
+    //
+    // Ban copy and move operations
+    //
+    ScopedLocalFree(const ScopedLocalFree&) = delete;
+    ScopedLocalFree(ScopedLocalFree&&) = delete;
+    ScopedLocalFree& operator=(const ScopedLocalFree&) = delete;
+    ScopedLocalFree& operator=(ScopedLocalFree&&) = delete;
+
+
+    // Read-only access to the wrapped pointer
+    T* Get() const noexcept
+    {
+        return m_ptr;
+    }
+
+    // Writable access to the wrapped pointer
+    T** AddressOf() noexcept
+    {
+        return &m_ptr;
+    }
+
+    // Explicit pointer conversion to bool
+    explicit operator bool() const noexcept
+    {
+        return (m_ptr != nullptr);
+    }
+
+    // Safely invoke ::LocalFree() on the wrapped pointer
+    void Free() noexcept
+    {
+        if (m_ptr != nullptr)
+        {
+            ::LocalFree(m_ptr);
+            m_ptr = nullptr;
+        }
+    }
+
+
+    //
+    // IMPLEMENTATION
+    //
+private:
+    T* m_ptr = nullptr;
+};
+
+
+// Helper function to build a multi-string from a vector<wstring>.
+//
+// A multi-string is a sequence of contiguous NUL-terminated strings,
+// that terminates with an additional NUL.
+// Basically, considered as a whole, the sequence is terminated by two NULs.
+// E.g.:
+//          Hello\0World\0\0
+//
 static std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& data)
 {
     // Special case of the empty multi-string
@@ -256,11 +331,12 @@ void RegKey::SetMultiStringValue(
 RegResult RegKey::TrySetMultiStringValue(
     const std::wstring& valueName,
     const std::vector<std::wstring>& data
-) // Can't be noexcept!
+) // Can't be noexcept, because the BuildMultiString() helper can throw,
+  // e.g. on memory allocation failure!
 {
     //
     // NOTE:
-    // This method can't be marked noexcept, because it calls details::BuildMultiString(),
+    // This method can't be marked noexcept, because it calls BuildMultiString(),
     // which allocates dynamic memory for the resulting std::vector<wchar_t>.
     //
 
@@ -292,11 +368,11 @@ std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
     const DWORD flags = RRF_RT_REG_SZ;
     LONG retCode = ::RegGetValueW(
         m_hKey,
-        nullptr, // no subkey
+        nullptr,    // no subkey
         valueName.c_str(),
         flags,
-        nullptr, // type not required
-        nullptr, // output buffer not needed now
+        nullptr,    // type not required
+        nullptr,    // output buffer not needed now
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -501,8 +577,7 @@ std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) const
 }
 
 
-RegResult RegKey::TryGetStringValue(const std::wstring& valueName,
-    std::wstring& result) const
+RegResult RegKey::TryGetStringValue(const std::wstring& valueName, std::wstring& result) const
 {
     _ASSERTE(IsValid());
 
@@ -619,8 +694,10 @@ RegResult RegKey::TryGetExpandStringValue(
 }
 
 
-RegResult RegKey::TryGetMultiStringValue(const std::wstring& valueName,
-    std::vector<std::wstring>& result) const
+RegResult RegKey::TryGetMultiStringValue(
+    const std::wstring& valueName,
+    std::vector<std::wstring>& result
+) const
 {
     _ASSERTE(IsValid());
 
@@ -693,8 +770,7 @@ RegResult RegKey::TryGetMultiStringValue(const std::wstring& valueName,
 }
 
 
-RegResult RegKey::TryGetBinaryValue(const std::wstring& valueName,
-    std::vector<BYTE>& result) const
+RegResult RegKey::TryGetBinaryValue(const std::wstring& valueName, std::vector<BYTE>& result) const
 {
     _ASSERTE(IsValid());
 
@@ -1036,8 +1112,10 @@ RegResult RegKey::TryEnumValues(std::vector<std::pair<std::wstring, DWORD>>& val
 }
 
 
-RegResult RegKey::TryConnectRegistry(const std::wstring& machineName,
-    HKEY hKeyPredefined) noexcept
+RegResult RegKey::TryConnectRegistry(
+    const std::wstring& machineName,
+    const HKEY hKeyPredefined
+) noexcept
 {
     // Safely close any previously opened key
     Close();
@@ -1061,33 +1139,28 @@ RegResult RegKey::TryConnectRegistry(const std::wstring& machineName,
 //                  RegResult Non-Inline Method Implementations
 //------------------------------------------------------------------------------
 
-std::wstring RegResult::ErrorMessage() const
+std::wstring RegResult::ErrorMessage(DWORD languageId) const
 {
-    // Invoke FormatMessage to retrieve the error message from Windows
-    wchar_t* messagePtr = nullptr;
+    // Invoke FormatMessage() to retrieve the error message from Windows
+    ScopedLocalFree<wchar_t> messagePtr;
     DWORD retCode = ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
                                      FORMAT_MESSAGE_FROM_SYSTEM |
                                      FORMAT_MESSAGE_IGNORE_INSERTS,
                                      nullptr,
                                      m_result,
-                                     MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                                     reinterpret_cast<LPWSTR>(&messagePtr),
+                                     languageId,
+                                     reinterpret_cast<LPWSTR>(messagePtr.AddressOf()),
                                      0,
                                      nullptr);
     if (retCode == 0)
     {
-        // FormatMessage failed
+        // FormatMessage failed: return an empty string
         return std::wstring();
     }
 
-    // Safely copy the C-string returned by FormatMessage() into a std::wstring object
-    std::wstring message(messagePtr);
-
-    // Don't forget to release the message buffer allocated by Windows
-    ::LocalFree(messagePtr);
-    messagePtr = nullptr;
-
-    return message;
+    // Safely copy the C-string returned by FormatMessage() into a std::wstring object,
+    // and return it back to the caller.
+    return std::wstring(messagePtr.Get());
 }
 
 
