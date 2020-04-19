@@ -142,7 +142,6 @@
     <ClInclude Include="WinReg.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WinReg.cpp" />
     <ClCompile Include="WinRegTest.cpp" />
   </ItemGroup>
   <ItemGroup>
