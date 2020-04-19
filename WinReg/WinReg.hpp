@@ -560,7 +560,7 @@ private:
 // E.g.:
 //          Hello\0World\0\0
 //------------------------------------------------------------------------------
-static std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& data)
+inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& data)
 {
     // Special case of the empty multi-string
     if (data.empty())
