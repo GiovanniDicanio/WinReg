@@ -11,7 +11,6 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-
 #include "WinReg.hpp"   // Module to test
 
 #include <exception>
@@ -39,10 +38,10 @@ void Test()
     // Test subkey and value enumeration
     //
 
-    const wstring testSubKey = L"SOFTWARE\\GioTest";
-    RegKey key(HKEY_CURRENT_USER, testSubKey);
+    const wstring testSubKey{ L"SOFTWARE\\GioTest" };
+    RegKey key{ HKEY_CURRENT_USER, testSubKey };
 
-    vector<wstring> subKeyNames = key.EnumSubKeys();
+    vector<wstring> subKeyNames{ key.EnumSubKeys() };
     wcout << L"Subkeys:\n";
     for (const auto& s : subKeyNames)
     {
@@ -50,7 +49,7 @@ void Test()
     }
     wcout << L'\n';
 
-    vector<pair<wstring, DWORD>> values = key.EnumValues();
+    vector<pair<wstring, DWORD>> values{ key.EnumValues() };
     wcout << L"Values:\n";
     for (const auto& v : values)
     {
@@ -67,10 +66,10 @@ void Test()
 
     key.Open(HKEY_CURRENT_USER, testSubKey);
 
-    const DWORD testDw = 0x1234ABCD;
-    const ULONGLONG testQw = 0xAABBCCDD11223344;
-    const wstring testSz = L"CiaoTestSz";
-    const wstring testExpandSz = L"%PATH%";
+    const DWORD testDw{ 0x1234ABCD };
+    const ULONGLONG testQw{ 0xAABBCCDD11223344 };
+    const wstring testSz{ L"CiaoTestSz" };
+    const wstring testExpandSz{ L"%PATH%" };
     const vector<BYTE> testBinary{ 0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33 };
     const vector<wstring> testMultiSz{ L"Hi", L"Hello", L"Ciao" };
 
@@ -168,11 +167,11 @@ void Test()
 
 
 // Throws on failure retCode; used by TestTryMethods()
-static inline void Check(const RegResult& retCode, const char* message)
+static inline void Check(const RegResult& retCode, const char* const message)
 {
     if (retCode.Failed())
     {
-        throw RegException(retCode.Code(), message);
+        throw RegException{ retCode.Code(), message };
     }
 }
 
@@ -186,12 +185,12 @@ void TestTryMethods()
     // Test subkey and value enumeration
     //
 
-    const wstring testSubKey = L"SOFTWARE\\GioTest";
-    RegKey key;
+    const wstring testSubKey{ L"SOFTWARE\\GioTest" };
+    RegKey key{};
     RegResult retCode = key.TryOpen(HKEY_CURRENT_USER, testSubKey);
     Check(retCode, "RegKey::TryOpen failed.");
 
-    vector<wstring> subKeyNames;
+    vector<wstring> subKeyNames{};
     retCode = key.TryEnumSubKeys(subKeyNames);
     Check(retCode, "RegKey::TryEnumSubKeys failed.");
 
@@ -202,7 +201,7 @@ void TestTryMethods()
     }
     wcout << L'\n';
 
-    vector<pair<wstring, DWORD>> values;
+    vector<pair<wstring, DWORD>> values{};
     retCode = key.TryEnumValues(values);
     Check(retCode, "RegKey::TryEnumValues failed.");
 
@@ -223,10 +222,10 @@ void TestTryMethods()
     retCode = key.TryOpen(HKEY_CURRENT_USER, testSubKey);
     Check(retCode, "RegKey::TryOpen failed.");
 
-    const DWORD testDw = 0x1234ABCD;
-    const ULONGLONG testQw = 0xAABBCCDD11223344;
-    const wstring testSz = L"CiaoTestSz";
-    const wstring testExpandSz = L"%PATH%";
+    const DWORD testDw{ 0x1234ABCD };
+    const ULONGLONG testQw{ 0xAABBCCDD11223344 };
+    const wstring testSz{ L"CiaoTestSz" };
+    const wstring testExpandSz{ L"%PATH%" };
     const vector<BYTE> testBinary{ 0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33 };
     const vector<wstring> testMultiSz{ L"Hi", L"Hello", L"Ciao" };
 
