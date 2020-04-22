@@ -25,7 +25,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 
 I initially developed this code using Visual Studio 2015 with Update 3; then I used **Visual Studio 2017**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
-This is a **header-only library**, implemented in the [`WinReg.hpp`](../master/WinReg/WinReg.hpp) header file.
+This is a **header-only library**, implemented in the [`WinReg.hpp`](WinReg/WinReg.hpp) header file.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -67,7 +67,7 @@ You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
 
-See the [**`WinReg.hpp`**](../master/WinReg/WinReg.hpp) header for more details and **documentation**.
+See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **documentation**.
 
 Thanks to everyone who contributed to this project with some additional features and constructive comments and suggestions.
 
