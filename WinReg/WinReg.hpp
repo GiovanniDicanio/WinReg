@@ -24,7 +24,7 @@
 // Unicode UTF-16 strings are represented using the std::wstring class;
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
 //
-// Compiler: Visual Studio 2017
+// Compiler: Visual Studio 2019
 // Code compiles cleanly at /W4 on both 32-bit and 64-bit builds.
 //
 // ===========================================================================
@@ -582,6 +582,8 @@ inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& da
 
     // Allocate a buffer to store the multi-string
     std::vector<wchar_t> multiString{};
+
+    // Reserve room in the vector to speed up the following insertion loop
     multiString.reserve(totalLen);
 
     // Copy the single strings into the multi-string
@@ -1861,6 +1863,9 @@ inline std::vector<std::wstring> RegKey::EnumSubKeys() const
     // The result subkey names will be stored here
     std::vector<std::wstring> subkeyNames{};
 
+    // Reserve room in the vector to speed up the following insertion loop
+    subkeyNames.reserve(subKeyCount);
+
     // Enumerate all the subkeys
     for (DWORD index{ 0 }; index < subKeyCount; index++)
     {
@@ -1932,6 +1937,9 @@ inline std::vector<std::pair<std::wstring, DWORD>> RegKey::EnumValues() const
 
     // The value names and types will be stored here
     std::vector<std::pair<std::wstring, DWORD>> valueInfo{};
+
+    // Reserve room in the vector to speed up the following insertion loop
+    valueInfo.reserve(valueCount);
 
     // Enumerate all the values
     for (DWORD index{ 0 }; index < valueCount; index++)
@@ -2009,6 +2017,9 @@ inline RegResult RegKey::TryEnumSubKeys(std::vector<std::wstring>& subKeys) cons
     // Should have been cleared at the beginning of the method
     _ASSERTE(subKeys.empty());
 
+    // Reserve room in the vector to speed up the following insertion loop
+    subKeys.reserve(subKeyCount);
+
     // Enumerate all the subkeys
     for (DWORD index{ 0 }; index < subKeyCount; index++)
     {
@@ -2080,6 +2091,9 @@ inline RegResult RegKey::TryEnumValues(std::vector<std::pair<std::wstring, DWORD
 
     // Should have been cleared at the beginning of the method
     _ASSERTE(values.empty());
+
+    // Reserve room in the vector to speed up the following insertion loop
+    values.reserve(valueCount);
 
     // Enumerate all the values
     for (DWORD index{ 0 }; index < valueCount; index++)
