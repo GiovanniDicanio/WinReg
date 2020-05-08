@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2020, May 6th
+// Last update:   2020, May 8th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -63,6 +63,24 @@
 #include <vector>           // std::vector
 
 
+//
+// Support for Building as DLL
+// ===========================
+//
+// When building as DLL, #define WINREG_API as follow, *before* including this file:
+//
+//      #define WINREG_API __declspec(dllexport)
+//
+// When consuming as DLL, #define WINREG_API as follow, *before* including this file:
+//
+//      #define WINREG_API __declspec(dllimport)
+//
+//
+#ifndef WINREG_API
+#define WINREG_API
+#endif // WINREG_API
+
+
 namespace winreg
 {
 
@@ -87,7 +105,7 @@ class RegResult;
 // The class is also swappable (defines a custom non-member swap);
 // relational operators are properly overloaded as well.
 //------------------------------------------------------------------------------
-class RegKey
+class WINREG_API RegKey
 {
 public:
 
@@ -375,7 +393,7 @@ private:
 //------------------------------------------------------------------------------
 // A simple wrapper around LONG return codes used by the Windows Registry API.
 //------------------------------------------------------------------------------
-class RegResult
+class WINREG_API RegResult
 {
 public:
 
@@ -416,7 +434,7 @@ private:
 //------------------------------------------------------------------------------
 // An exception representing an error with the registry operations
 //------------------------------------------------------------------------------
-class RegException
+class WINREG_API RegException
     : public std::system_error
 {
 public:
