@@ -1,4 +1,4 @@
-# WinReg v2.3.1
+# WinReg v2.4.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -23,14 +23,11 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
 
-I initially developed this code using Visual Studio 2015 with Update 3; then I used Visual Studio 2017, and currently **Visual Studio 2019**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
+This code is currently developed using **Visual Studio 2019**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
-This library is made by two files:
+This is a **header-only** library, implemented in the [`WinReg.hpp`](WinReg/WinReg.hpp) header file.
 
-* [`WinReg.hpp`](WinReg/WinReg.hpp): the library's header file
-* [`WinReg.cpp`](WinReg/WinReg.cpp): the library's implementation file 
-
-Moreover, `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
+`WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
 The library exposes three main classes:
 
@@ -65,7 +62,7 @@ for (const auto & v : values)
 }
 ```
 
-The library also offers methods that return error codes wrapped in `RegResult`, instead of throwing `RegException` on failure. These methods are named in the form of _TryAction_, e.g. `RegKey::TryOpen()`, `RegKey::TryGetDwordValue()`, etc. 
+The library also offers methods that return error codes wrapped in the `RegResult` C++ class, instead of throwing `RegException` on failure. These methods are named in the form of _TryAction_, e.g. `RegKey::TryOpen()`, `RegKey::TryGetDwordValue()`, etc. 
 You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
