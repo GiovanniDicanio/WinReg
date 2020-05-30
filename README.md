@@ -25,7 +25,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 
 This code is currently developed using **Visual Studio 2019**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
 
-This is a **header-only** library, implemented in the [`WinReg.hpp`](WinReg/WinReg.hpp) header file.
+This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** header file.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
