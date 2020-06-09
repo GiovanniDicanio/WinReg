@@ -1,4 +1,4 @@
-# WinReg v2.4.0
+# WinReg v3.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -29,24 +29,24 @@ This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/Wi
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
-The library exposes three main classes:
+The library exposes two main classes:
 
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
-* `RegResult`: a tiny wrapper around the raw return codes of the Windows Registry C API functions
 
 There are many member functions inside the `RegKey` class, that wrap many parts of the native C-interface Windows Registry API, in a convenient C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
-RegKey  key(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
+RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey" };
 
 DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
 wstring s  = key.GetStringValue(L"SomeStringValue");
 ```
 
 Or you can enumerate all the values under a given key with simple C++ code like this:
+
 ```c++
 auto values = key.EnumValues();
 
@@ -62,7 +62,23 @@ for (const auto & v : values)
 }
 ```
 
-The library also offers methods that return error codes wrapped in the `RegResult` C++ class, instead of throwing `RegException` on failure. These methods are named in the form of _TryAction_, e.g. `RegKey::TryOpen()`, `RegKey::TryGetDwordValue()`, etc. 
+In addition, you can also use the `RegKey::TryGet...Value` methods, that return `std::optional` instead of throwing on errors:
+
+```c++
+// RegKey::TryGetDWordValue() returns a std::optional<DWORD>;
+// the returned std::optional contains no value on error.
+
+if (auto dw = key.TryGetDwordValue(L"SomeDwordValue"))
+{
+    // All right: Process the returned value ...
+}
+else
+{
+    // The method has failed: The returned std::optional contains no value.   
+}
+```
+
+
 You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
