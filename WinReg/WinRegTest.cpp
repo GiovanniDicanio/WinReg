@@ -19,6 +19,7 @@
 #include <vector>
 
 
+using std::optional;
 using std::pair;
 using std::vector;
 using std::wcout;
@@ -26,7 +27,6 @@ using std::wstring;
 
 using winreg::RegKey;
 using winreg::RegException;
-using winreg::RegResult;
 
 
 // Test common RegKey methods
@@ -39,7 +39,7 @@ void Test()
     //
 
     const wstring testSubKey = L"SOFTWARE\\GioTest";
-    RegKey key(HKEY_CURRENT_USER, testSubKey);
+    RegKey key{ HKEY_CURRENT_USER, testSubKey };
 
     vector<wstring> subKeyNames = key.EnumSubKeys();
     wcout << L"Subkeys:\n";
@@ -61,7 +61,7 @@ void Test()
 
 
     //
-    // Test SetXxxValue and GetXxxValue methods
+    // Test SetXxxValue, GetXxxValue and TryGetXxxValue methods
     //
 
     key.Open(HKEY_CURRENT_USER, testSubKey);
@@ -86,6 +86,18 @@ void Test()
         wcout << L"RegKey::GetDwordValue failed.\n";
     }
 
+    if (auto testDw2 = key.TryGetDwordValue(L"TestValueDword"))
+    {
+        if (testDw2 != testDw)
+        {
+            wcout << L"RegKey::TryGetDwordValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetDwordValue failed (std::optional has no value).\n";
+    }
+
     DWORD typeId = key.QueryValueType(L"TestValueDword");
     if (typeId != REG_DWORD)
     {
@@ -96,6 +108,18 @@ void Test()
     if (testQw1 != testQw)
     {
         wcout << L"RegKey::GetQwordValue failed.\n";
+    }
+
+    if (auto testQw2 = key.TryGetQwordValue(L"TestValueQword"))
+    {
+        if (testQw2 != testQw)
+        {
+            wcout << L"RegKey::TryGetQwordValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetQwordValue failed (std::optional has no value).\n";
     }
 
     typeId = key.QueryValueType(L"TestValueQword");
@@ -110,6 +134,18 @@ void Test()
         wcout << L"RegKey::GetStringValue failed.\n";
     }
 
+    if (auto testSz2 = key.TryGetStringValue(L"TestValueString"))
+    {
+        if (testSz2 != testSz)
+        {
+            wcout << L"RegKey::TryGetStringValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetStringValue failed (std::optional has no value).\n";
+    }
+
     typeId = key.QueryValueType(L"TestValueString");
     if (typeId != REG_SZ)
     {
@@ -120,6 +156,18 @@ void Test()
     if (testExpandSz1 != testExpandSz)
     {
         wcout << L"RegKey::GetExpandStringValue failed.\n";
+    }
+
+    if (auto testExpandSz2 = key.TryGetExpandStringValue(L"TestValueExpandString"))
+    {
+        if (testExpandSz2 != testExpandSz)
+        {
+            wcout << L"RegKey::TryGetExpandStringValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetExpandStringValue failed (std::optional has no value).\n";
     }
 
     typeId = key.QueryValueType(L"TestValueExpandString");
@@ -134,6 +182,18 @@ void Test()
         wcout << L"RegKey::GetMultiStringValue failed.\n";
     }
 
+    if (auto testMultiSz2 = key.TryGetMultiStringValue(L"TestValueMultiString"))
+    {
+        if (testMultiSz2 != testMultiSz)
+        {
+            wcout << L"RegKey::TryGetMultiStringValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetMultiStringValue failed (std::optional has no value).\n";
+    }
+
     typeId = key.QueryValueType(L"TestValueMultiString");
     if (typeId != REG_MULTI_SZ)
     {
@@ -144,6 +204,18 @@ void Test()
     if (testBinary1 != testBinary)
     {
         wcout << L"RegKey::GetBinaryValue failed.\n";
+    }
+
+    if (auto testBinary2 = key.TryGetBinaryValue(L"TestValueBinary"))
+    {
+        if (testBinary2 != testBinary)
+        {
+            wcout << L"RegKey::TryGetBinaryValue failed.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetBinaryValue failed (std::optional has no value).\n";
     }
 
     typeId = key.QueryValueType(L"TestValueBinary");
@@ -166,193 +238,6 @@ void Test()
 }
 
 
-// Throws on failure retCode; used by TestTryMethods()
-static inline void Check(const RegResult& retCode, const char* const message)
-{
-    if (retCode.Failed())
-    {
-        throw RegException(retCode.Code(), message);
-    }
-}
-
-
-// Test RegKey methods that return error codes
-void TestTryMethods()
-{
-    wcout << "\n *** Testing Error-code-returning RegKey::TryAction Methods *** \n\n";
-
-    //
-    // Test subkey and value enumeration
-    //
-
-    const wstring testSubKey = L"SOFTWARE\\GioTest";
-    RegKey key;
-    RegResult retCode = key.TryOpen(HKEY_CURRENT_USER, testSubKey);
-    Check(retCode, "RegKey::TryOpen failed.");
-
-    vector<wstring> subKeyNames;
-    retCode = key.TryEnumSubKeys(subKeyNames);
-    Check(retCode, "RegKey::TryEnumSubKeys failed.");
-
-    wcout << L"Subkeys:\n";
-    for (const auto& s : subKeyNames)
-    {
-        wcout << L"  [" << s << L"]\n";
-    }
-    wcout << L'\n';
-
-    vector<pair<wstring, DWORD>> values;
-    retCode = key.TryEnumValues(values);
-    Check(retCode, "RegKey::TryEnumValues failed.");
-
-    wcout << L"Values:\n";
-    for (const auto& v : values)
-    {
-        wcout << L"  [" << v.first << L"](" << RegKey::RegTypeToString(v.second) << L")\n";
-    }
-    wcout << L'\n';
-
-    key.Close();
-
-
-    //
-    // Test TrySetXxxValue and TryGetXxxValue methods
-    //
-
-    retCode = key.TryOpen(HKEY_CURRENT_USER, testSubKey);
-    Check(retCode, "RegKey::TryOpen failed.");
-
-    const DWORD testDw = 0x1234ABCD;
-    const ULONGLONG testQw = 0xAABBCCDD11223344;
-    const wstring testSz = L"CiaoTestSz";
-    const wstring testExpandSz = L"%PATH%";
-    const vector<BYTE> testBinary = { 0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33 };
-    const vector<wstring> testMultiSz = { L"Hi", L"Hello", L"Ciao" };
-
-    retCode = key.TrySetDwordValue(L"TestValueDword", testDw);
-    Check(retCode, "RegKey::TrySetDwordValue failed.");
-
-    retCode = key.TrySetQwordValue(L"TestValueQword", testQw);
-    Check(retCode, "RegKey:TrySetQwordValue: failed.");
-
-    retCode = key.TrySetStringValue(L"TestValueString", testSz);
-    Check(retCode, "RegKey::TrySetStringValue failed.");
-
-    retCode = key.TrySetExpandStringValue(L"TestValueExpandString", testExpandSz);
-    Check(retCode, "RegKey::TrySetExpandStringValue string failed.");
-
-    retCode = key.TrySetMultiStringValue(L"TestValueMultiString", testMultiSz);
-    Check(retCode, "RegKey::TrySetMultiStringValue failed.");
-
-    retCode = key.TrySetBinaryValue(L"TestValueBinary", testBinary);
-    Check(retCode, "RegKey::TrySetBinaryValue failed.");
-
-
-    DWORD testDw1 = 0;
-    retCode = key.TryGetDwordValue(L"TestValueDword", testDw1);
-    Check(retCode, "RegKey::TryGetDwordValue failed.");
-    if (testDw1 != testDw)
-    {
-        wcout << L"RegKey::TryGetDwordValue failed.\n";
-    }
-
-    DWORD typeId = 0;
-    retCode = key.TryQueryValueType(L"TestValueDword", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_DWORD)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_DWORD.\n";
-    }
-
-    ULONGLONG testQw1 = 0;
-    retCode = key.TryGetQwordValue(L"TestValueQword", testQw1);
-    Check(retCode, "RegKey::TryGetQwordValue failed.");
-    if (testQw1 != testQw)
-    {
-        wcout << L"RegKey::TryGetQwordValue failed.\n";
-    }
-
-    retCode = key.TryQueryValueType(L"TestValueQword", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_QWORD)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_QWORD.\n";
-    }
-
-    wstring testSz1;
-    retCode = key.TryGetStringValue(L"TestValueString", testSz1);
-    Check(retCode, "RegKey::TryGetStringValue failed.");
-    if (testSz1 != testSz)
-    {
-        wcout << L"RegKey::TryGetStringValue failed.\n";
-    }
-
-    retCode = key.TryQueryValueType(L"TestValueString", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_SZ)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_SZ.\n";
-    }
-
-    wstring testExpandSz1;
-    retCode = key.TryGetExpandStringValue(L"TestValueExpandString", testExpandSz1);
-    Check(retCode, "RegKey::TryGetExpandStringValue failed.");
-    if (testExpandSz1 != testExpandSz)
-    {
-        wcout << L"RegKey::TryGetExpandStringValue failed.\n";
-    }
-
-    retCode = key.TryQueryValueType(L"TestValueExpandString", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_EXPAND_SZ)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_EXPAND_SZ.\n";
-    }
-
-    vector<wstring> testMultiSz1;
-    retCode = key.TryGetMultiStringValue(L"TestValueMultiString", testMultiSz1);
-    Check(retCode, "RegKey::TryGetMultiStringValue failed.");
-    if (testMultiSz1 != testMultiSz)
-    {
-        wcout << L"RegKey::TryGetMultiStringValue failed.\n";
-    }
-
-    retCode = key.TryQueryValueType(L"TestValueMultiString", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_MULTI_SZ)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_MULTI_SZ.\n";
-    }
-
-    vector<BYTE> testBinary1;
-    retCode = key.TryGetBinaryValue(L"TestValueBinary", testBinary1);
-    Check(retCode, "RegKey::TryGetBinaryValue failed.");
-    if (testBinary1 != testBinary)
-    {
-        wcout << L"RegKey::TryGetBinaryValue failed.\n";
-    }
-
-    retCode = key.TryQueryValueType(L"TestValueBinary", typeId);
-    Check(retCode, "RegKey::TryQueryValueType failed.");
-    if (typeId != REG_BINARY)
-    {
-        wcout << L"RegKey::TryQueryValueType failed for REG_BINARY.\n";
-    }
-
-
-    //
-    // Remove some test values
-    //
-
-    Check(key.TryDeleteValue(L"TestValueDword"),        "RegKey::TryDeleteValue failed.");
-    Check(key.TryDeleteValue(L"TestValueQword"),        "RegKey::TryDeleteValue failed.");
-    Check(key.TryDeleteValue(L"TestValueString"),       "RegKey::TryDeleteValue failed.");
-    Check(key.TryDeleteValue(L"TestValueExpandString"), "RegKey::TryDeleteValue failed.");
-    Check(key.TryDeleteValue(L"TestValueMultiString"),  "RegKey::TryDeleteValue failed.");
-    Check(key.TryDeleteValue(L"TestValueBinary"),       "RegKey::TryDeleteValue failed.");
-}
-
-
 int main()
 {
     const int kExitOk = 0;
@@ -365,7 +250,6 @@ int main()
         wcout << L"=========================================\n\n";
 
         Test();
-        TestTryMethods();
 
         wcout << L"All right!! :)\n\n";
     }
