@@ -65,7 +65,7 @@ for (const auto & v : values)
 In addition, you can also use the `RegKey::TryGet...Value` methods, that return `std::optional` instead of throwing on errors:
 
 ```c++
-// RegKey::TryGetDWordValue() returns a std::optional<DWORD>;
+// RegKey::TryGetDwordValue() returns a std::optional<DWORD>;
 // the returned std::optional contains no value on error.
 
 if (auto dw = key.TryGetDwordValue(L"SomeDwordValue"))
