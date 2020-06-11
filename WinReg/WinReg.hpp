@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2020, June 9th
+// Last update:   2020, June 11th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -75,6 +75,7 @@ namespace winreg
 
 // Forward class declarations
 class RegException;
+class RegResult;
 
 
 //------------------------------------------------------------------------------
@@ -207,6 +208,30 @@ public:
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     );
 
+    // Wrapper around RegCreateKeyEx, that allows you to specify desired access
+    [[nodiscard]] RegResult TryCreate(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess = KEY_READ | KEY_WRITE
+    ) noexcept;
+
+    // Wrapper around RegCreateKeyEx
+    [[nodiscard]] RegResult TryCreate(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess,
+        DWORD options,
+        SECURITY_ATTRIBUTES* securityAttributes,
+        DWORD* disposition
+    ) noexcept;
+
+    // Wrapper around RegOpenKeyEx
+    [[nodiscard]] RegResult TryOpen(
+        HKEY hKeyParent,
+        const std::wstring& subKey,
+        REGSAM desiredAccess = KEY_READ | KEY_WRITE
+    ) noexcept;
+
 
     //
     // Registry Value Setters
@@ -325,6 +350,47 @@ public:
 
 
 //------------------------------------------------------------------------------
+// A tiny wrapper around LONG return codes used by the Windows Registry API.
+//------------------------------------------------------------------------------
+class RegResult
+{
+public:
+
+    // Initialize to success code (ERROR_SUCCESS)
+    RegResult() noexcept = default;
+
+    // Conversion constructor, *not* marked "explicit" on purpose,
+    // allows easy and convenient conversion from Win32 API return code type
+    // to this C++ wrapper.
+    RegResult(LONG result) noexcept;
+
+    // Is the wrapped code a success code?
+    [[nodiscard]] bool IsOk() const noexcept;
+
+    // Is the wrapped error code a failure code?
+    [[nodiscard]] bool Failed() const noexcept;
+
+    // Is the wrapped code a success code?
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    // Get the wrapped Win32 code
+    [[nodiscard]] LONG Code() const noexcept;
+
+    // Return the system error message associated to the current error code
+    [[nodiscard]] std::wstring ErrorMessage() const;
+
+    // Return the system error message associated to the current error code,
+    // using the given input language identifier
+    [[nodiscard]] std::wstring ErrorMessage(DWORD languageId) const;
+
+private:
+    // Error code returned by Windows Registry C API;
+    // default initialized to success code.
+    LONG m_result{ ERROR_SUCCESS };
+};
+
+
+//------------------------------------------------------------------------------
 //          Overloads of relational comparison operators for RegKey
 //------------------------------------------------------------------------------
 
@@ -360,11 +426,79 @@ inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
 
 
 //------------------------------------------------------------------------------
-//                          Private Helper Functions
+//                  Private Helper Classes and Functions
 //------------------------------------------------------------------------------
 
 namespace detail
 {
+
+//------------------------------------------------------------------------------
+// Simple scoped-based RAII wrapper that *automatically* invokes LocalFree()
+// in its destructor.
+//------------------------------------------------------------------------------
+template <typename T>
+class ScopedLocalFree
+{
+public:
+
+    typedef T  Type;
+    typedef T* TypePtr;
+
+
+    // Init wrapped pointer to nullptr
+    ScopedLocalFree() noexcept = default;
+
+    // Automatically and safely invoke ::LocalFree()
+    ~ScopedLocalFree() noexcept
+    {
+        Free();
+    }
+
+    //
+    // Ban copy and move operations
+    //
+    ScopedLocalFree(const ScopedLocalFree&) = delete;
+    ScopedLocalFree(ScopedLocalFree&&) = delete;
+    ScopedLocalFree& operator=(const ScopedLocalFree&) = delete;
+    ScopedLocalFree& operator=(ScopedLocalFree&&) = delete;
+
+
+    // Read-only access to the wrapped pointer
+    [[nodiscard]] T* Get() const noexcept
+    {
+        return m_ptr;
+    }
+
+    // Writable access to the wrapped pointer
+    [[nodiscard]] T** AddressOf() noexcept
+    {
+        return &m_ptr;
+    }
+
+    // Explicit pointer conversion to bool
+    explicit operator bool() const noexcept
+    {
+        return (m_ptr != nullptr);
+    }
+
+    // Safely invoke ::LocalFree() on the wrapped pointer
+    void Free() noexcept
+    {
+        if (m_ptr != nullptr)
+        {
+            LocalFree(m_ptr);
+            m_ptr = nullptr;
+        }
+    }
+
+
+    //
+    // IMPLEMENTATION
+    //
+private:
+    T* m_ptr{ nullptr };
+};
+
 
 //------------------------------------------------------------------------------
 // Helper function to build a multi-string from a vector<wstring>.
@@ -646,6 +780,88 @@ inline void RegKey::Open(
 
     // Take ownership of the newly created key
     m_hKey = hKey;
+}
+
+
+inline RegResult RegKey::TryCreate(
+    const HKEY          hKeyParent,
+    const std::wstring& subKey,
+    const REGSAM        desiredAccess
+) noexcept
+{
+    constexpr DWORD kDefaultOptions = REG_OPTION_NON_VOLATILE;
+
+    return TryCreate(hKeyParent, subKey, desiredAccess, kDefaultOptions,
+        nullptr, // no security attributes,
+        nullptr  // no disposition
+    );
+}
+
+
+inline RegResult RegKey::TryCreate(
+    const HKEY                  hKeyParent,
+    const std::wstring&         subKey,
+    const REGSAM                desiredAccess,
+    const DWORD                 options,
+    SECURITY_ATTRIBUTES* const  securityAttributes,
+    DWORD* const                disposition
+) noexcept
+{
+    HKEY hKey = nullptr;
+    RegResult retCode = RegCreateKeyEx(
+        hKeyParent,
+        subKey.c_str(),
+        0,          // reserved
+        REG_NONE,   // user-defined class type parameter not supported
+        options,
+        desiredAccess,
+        securityAttributes,
+        &hKey,
+        disposition
+    );
+    if (retCode.Failed())
+    {
+        return retCode;
+    }
+
+    // Safely close any previously opened key
+    Close();
+
+    // Take ownership of the newly created key
+    m_hKey = hKey;
+
+    _ASSERTE(retCode.IsOk());
+    return retCode;
+}
+
+
+inline RegResult RegKey::TryOpen(
+    const HKEY          hKeyParent,
+    const std::wstring& subKey,
+    const REGSAM        desiredAccess
+) noexcept
+{
+    HKEY hKey = nullptr;
+    RegResult retCode = RegOpenKeyEx(
+        hKeyParent,
+        subKey.c_str(),
+        REG_NONE,           // default options
+        desiredAccess,
+        &hKey
+    );
+    if (retCode.Failed())
+    {
+        return retCode;
+    }
+
+    // Safely close any previously opened key
+    Close();
+
+    // Take ownership of the newly created key
+    m_hKey = hKey;
+
+    _ASSERTE(retCode.IsOk());
+    return retCode;
 }
 
 
@@ -1710,6 +1926,72 @@ inline RegException::RegException(const LONG errorCode, const char* const messag
 inline RegException::RegException(const LONG errorCode, const std::string& message)
     : std::system_error{ errorCode, std::system_category(), message }
 {}
+
+
+//------------------------------------------------------------------------------
+//                          RegResult Inline Methods
+//------------------------------------------------------------------------------
+
+inline RegResult::RegResult(const LONG result) noexcept
+    : m_result{ result }
+{}
+
+
+inline bool RegResult::IsOk() const noexcept
+{
+    return m_result == ERROR_SUCCESS;
+}
+
+
+inline bool RegResult::Failed() const noexcept
+{
+    return m_result != ERROR_SUCCESS;
+}
+
+
+inline RegResult::operator bool() const noexcept
+{
+    return IsOk();
+}
+
+
+inline LONG RegResult::Code() const noexcept
+{
+    return m_result;
+}
+
+
+inline std::wstring RegResult::ErrorMessage() const
+{
+    return ErrorMessage(MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT));
+}
+
+
+inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
+{
+    // Invoke FormatMessage() to retrieve the error message from Windows
+    detail::ScopedLocalFree<wchar_t> messagePtr;
+    DWORD retCode = FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
+        m_result,
+        languageId,
+        reinterpret_cast<LPWSTR>(messagePtr.AddressOf()),
+        0,
+        nullptr
+    );
+    if (retCode == 0)
+    {
+        // FormatMessage failed: return an empty string
+        return std::wstring{};
+    }
+
+    // Safely copy the C-string returned by FormatMessage() into a std::wstring object,
+    // and return it back to the caller.
+    return std::wstring{ messagePtr.Get() };
+}
 
 
 } // namespace winreg

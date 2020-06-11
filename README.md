@@ -1,4 +1,4 @@
-# WinReg v3.0.1
+# WinReg v3.1.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -29,10 +29,11 @@ This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/Wi
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
-The library exposes two main classes:
+The library exposes three main classes:
 
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
+* `RegResult`: a tiny wrapper around Windows Registry API `LONG` error codes, returned by some `Try` methods (like `RegKey::TryOpen`)
 
 There are many member functions inside the `RegKey` class, that wrap many parts of the native C-interface Windows Registry API, in a convenient C++ way.
 
