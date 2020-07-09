@@ -78,120 +78,136 @@ class RegException;
 class RegResult;
 
 
-//------------------------------------------------------------------------------
-// Safe, efficient and convenient C++ wrapper around HKEY registry key handles.
-//
-// This class is movable but not copyable.
-//
-// This class is designed to be very *efficient* and low-overhead, for example:
-// non-throwing operations are carefully marked as noexcept, so the C++ compiler
-// can emit optimized code.
-//
-// Moreover, this class just wraps a raw HKEY handle, without any
-// shared-ownership overhead like in std::shared_ptr; you can think of this
-// class kind of like a std::unique_ptr for HKEYs.
-//
-// The class is also swappable (defines a custom non-member swap);
-// relational operators are properly overloaded as well.
-//------------------------------------------------------------------------------
+/**
+* @summary Safe, efficient and convenient C++ wrapper around HKEY registry key handles.
+* 
+* This class is movable but not copyable.
+*
+* This class is designed to be very *efficient* and low-overhead, for example:
+* non-throwing operations are carefully marked as noexcept, so the C++ compiler
+* can emit optimized code.
+*
+* Moreover, this class just wraps a raw HKEY handle, without any
+* shared-ownership overhead like in std::shared_ptr; you can think of this
+* class kind of like a std::unique_ptr for HKEYs.
+* 
+* The class is also swappable (defines a custom non-member swap);
+* relational operators are properly overloaded as well.
+*/
 class RegKey
 {
 public:
 
+#pragma region Construction/Destruction
     //
     // Construction/Destruction
     //
 
-    // Initialize as an empty key handle
+    /// @summary Initialize as an empty key handle
     RegKey() noexcept = default;
 
-    // Take ownership of the input key handle
+    /// @summary Take ownership of the input key handle
     explicit RegKey(HKEY hKey) noexcept;
 
-    // Open the given registry key if it exists, else create a new key.
-    // Uses default KEY_READ|KEY_WRITE access.
-    // For finer grained control, call the Create() method overloads.
-    // Throw RegException on failure.
+    /** @summary Open the given registry key if it exists, else create a new key.
+    * Uses default KEY_READ|KEY_WRITE access.
+    * For finer grained control, call the Create() method overloads.
+    * Throw RegException on failure.
+    */
     RegKey(HKEY hKeyParent, const std::wstring& subKey);
 
-    // Open the given registry key if it exists, else create a new key.
-    // Allow the caller to specify the desired access to the key (e.g. KEY_READ
-    // for read-only access).
-    // For finer grained control, call the Create() method overloads.
-    // Throw RegException on failure.
+    /** @summary Open the given registry key if it exists, else create a new key.
+    * Allow the caller to specify the desired access to the key (e.g. KEY_READ
+    * for read-only access).
+    * For finer grained control, call the Create() method overloads.
+    * Throw RegException on failure.
+    */
     RegKey(HKEY hKeyParent, const std::wstring& subKey, REGSAM desiredAccess);
 
 
-    // Take ownership of the input key handle.
-    // The input key handle wrapper is reset to an empty state.
+    /// @summary Take ownership of the input key handle.
+    /// The input key handle wrapper is reset to an empty state.
     RegKey(RegKey&& other) noexcept;
 
-    // Move-assign from the input key handle.
-    // Properly check against self-move-assign (which is safe and does nothing).
+    /// @summary Move-assign from the input key handle.
+    /// Properly check against self-move-assign (which is safe and does nothing).
     RegKey& operator=(RegKey&& other) noexcept;
 
-    // Ban copy
+    /// @summary Ban copy
     RegKey(const RegKey&) = delete;
+    /// @summary Ban Copy
     RegKey& operator=(const RegKey&) = delete;
 
-    // Safely close the wrapped key handle (if any)
+    /// @summary Safely close the wrapped key handle (if any)
     ~RegKey() noexcept;
+#pragma endregion
 
-
+#pragma region Properties
     //
     // Properties
     //
 
-    // Access the wrapped raw HKEY handle
+    /// @summary Access the wrapped raw HKEY handle
     [[nodiscard]] HKEY Get() const noexcept;
 
-    // Is the wrapped HKEY handle valid?
+    /// @summary Is the wrapped HKEY handle valid?
     [[nodiscard]] bool IsValid() const noexcept;
 
-    // Same as IsValid(), but allow a short "if (regKey)" syntax
+    /// @summary Same as IsValid(), but allow a short "if (regKey)" syntax
     [[nodiscard]] explicit operator bool() const noexcept;
 
-    // Is the wrapped handle a predefined handle (e.g.HKEY_CURRENT_USER) ?
+    /// @summary Is the wrapped handle a predefined handle (e.g.HKEY_CURRENT_USER) ?
     [[nodiscard]] bool IsPredefined() const noexcept;
+#pragma endregion
 
-
+#pragma region Operations
     //
     // Operations
     //
 
-    // Close current HKEY handle.
-    // If there's no valid handle, do nothing.
-    // This method doesn't close predefined HKEY handles (e.g. HKEY_CURRENT_USER).
+    /** 
+    * @summary Close current HKEY handle.
+    * If there's no valid handle, do nothing.
+    * This method doesn't close predefined HKEY handles (e.g. HKEY_CURRENT_USER).
+    */
     void Close() noexcept;
 
-    // Transfer ownership of current HKEY to the caller.
-    // Note that the caller is responsible for closing the key handle!
+    /**
+    * @summary Transfer ownership of current HKEY to the caller.
+    * Note that the caller is responsible for closing the key handle!
+    */
     [[nodiscard]] HKEY Detach() noexcept;
 
-    // Take ownership of the input HKEY handle.
-    // Safely close any previously open handle.
-    // Input key handle can be nullptr.
+    /**
+    * @summary Take ownership of the input HKEY handle.
+    * Safely close any previously open handle.
+    * Input key handle can be nullptr.
+    */
     void Attach(HKEY hKey) noexcept;
 
-    // Non-throwing swap;
-    // Note: There's also a non-member swap overload
+    /**
+    * @summary Non-throwing swap;
+    * Note: There's also a non-member swap overload
+    */
     void SwapWith(RegKey& other) noexcept;
 
+#pragma endregion
 
+#pragma region Wrappers around Windows Registry APIs.
     //
     // Wrappers around Windows Registry APIs.
     // See the official MSDN documentation for these APIs for detailed explanations
     // of the wrapper method parameters.
     //
 
-    // Wrapper around RegCreateKeyEx, that allows you to specify desired access
+    /// @summary Wrapper around RegCreateKeyEx, that allows you to specify desired access
     void Create(
         HKEY hKeyParent,
         const std::wstring& subKey,
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     );
 
-    // Wrapper around RegCreateKeyEx
+    /// @summary Wrapper around RegCreateKeyEx
     void Create(
         HKEY hKeyParent,
         const std::wstring& subKey,
@@ -201,21 +217,21 @@ public:
         DWORD* disposition
     );
 
-    // Wrapper around RegOpenKeyEx
+    /// @summary Wrapper around RegOpenKeyEx
     void Open(
         HKEY hKeyParent,
         const std::wstring& subKey,
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     );
 
-    // Wrapper around RegCreateKeyEx, that allows you to specify desired access
+    /// @summary Wrapper around RegCreateKeyEx, that allows you to specify desired access
     [[nodiscard]] RegResult TryCreate(
         HKEY hKeyParent,
         const std::wstring& subKey,
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     ) noexcept;
 
-    // Wrapper around RegCreateKeyEx
+    /// @summary Wrapper around RegCreateKeyEx
     [[nodiscard]] RegResult TryCreate(
         HKEY hKeyParent,
         const std::wstring& subKey,
@@ -225,14 +241,15 @@ public:
         DWORD* disposition
     ) noexcept;
 
-    // Wrapper around RegOpenKeyEx
+    /// @summary Wrapper around RegOpenKeyEx
     [[nodiscard]] RegResult TryOpen(
         HKEY hKeyParent,
         const std::wstring& subKey,
         REGSAM desiredAccess = KEY_READ | KEY_WRITE
     ) noexcept;
+#pragma endregion 
 
-
+#pragma region Registry Value Setters
     //
     // Registry Value Setters
     //
@@ -245,7 +262,9 @@ public:
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
 
+#pragma endregion
 
+#pragma region Registry Value Getters
     //
     // Registry Value Getters
     //
@@ -268,6 +287,9 @@ public:
     [[nodiscard]] std::vector<std::wstring> GetMultiStringValue(const std::wstring& valueName) const;
     [[nodiscard]] std::vector<BYTE> GetBinaryValue(const std::wstring& valueName) const;
 
+#pragma endregion
+
+#pragma region Registry Value Getters Returning std::optional
 
     //
     // Registry Value Getters Returning std::optional
@@ -286,7 +308,9 @@ public:
     [[nodiscard]] std::optional<std::vector<std::wstring>> TryGetMultiStringValue(const std::wstring& valueName) const;
     [[nodiscard]] std::optional<std::vector<BYTE>> TryGetBinaryValue(const std::wstring& valueName) const;
 
+#pragma endregion
 
+#pragma region Query Operations
     //
     // Query Operations
     //
@@ -304,7 +328,9 @@ public:
     // the DWORD is the value type.
     [[nodiscard]] std::vector<std::pair<std::wstring, DWORD>> EnumValues() const;
 
+#pragma endregion
 
+#pragma region Misc Registry API Wrappers
     //
     // Misc Registry API Wrappers
     //
@@ -322,7 +348,7 @@ public:
     void ConnectRegistry(const std::wstring& machineName, HKEY hKeyPredefined);
 
 
-    // Return a string representation of Windows registry types
+    /// @summary Return a string representation of Windows registry types
     [[nodiscard]] static std::wstring RegTypeToString(DWORD regType);
 
     //
@@ -337,9 +363,12 @@ private:
 };
 
 
-//------------------------------------------------------------------------------
-// An exception representing an error with the registry operations
-//------------------------------------------------------------------------------
+/**
+ * @summary
+ * ------------------------------------------------------------------------------
+ * An exception representing an error with the registry operations
+ * ------------------------------------------------------------------------------
+ */
 class RegException
     : public std::system_error
 {
@@ -348,10 +377,9 @@ public:
     RegException(LONG errorCode, const std::string& message);
 };
 
-
-//------------------------------------------------------------------------------
-// A tiny wrapper around LONG return codes used by the Windows Registry API.
-//------------------------------------------------------------------------------
+/**
+* @summary A tiny wrapper around LONG return codes used by the Windows Registry API.
+*/
 class RegResult
 {
 public:
@@ -359,28 +387,30 @@ public:
     // Initialize to success code (ERROR_SUCCESS)
     RegResult() noexcept = default;
 
-    // Conversion constructor, *not* marked "explicit" on purpose,
-    // allows easy and convenient conversion from Win32 API return code type
-    // to this C++ wrapper.
+    /**
+    * @summary Conversion constructor, *not* marked "explicit" on purpose,
+    * allows easy and convenient conversion from Win32 API return code type
+    * to this C++ wrapper.
+    * */
     RegResult(LONG result) noexcept;
 
-    // Is the wrapped code a success code?
+    /// @summary Is the wrapped code a success code?
     [[nodiscard]] bool IsOk() const noexcept;
 
-    // Is the wrapped error code a failure code?
+    /// @summary Is the wrapped error code a failure code?
     [[nodiscard]] bool Failed() const noexcept;
 
-    // Is the wrapped code a success code?
+    /// @summary Is the wrapped code a success code?
     [[nodiscard]] explicit operator bool() const noexcept;
 
-    // Get the wrapped Win32 code
+    /// @summary Get the wrapped Win32 code
     [[nodiscard]] LONG Code() const noexcept;
 
-    // Return the system error message associated to the current error code
+    /// @summary Return the system error message associated to the current error code
     [[nodiscard]] std::wstring ErrorMessage() const;
 
-    // Return the system error message associated to the current error code,
-    // using the given input language identifier
+    /// @summary Return the system error message associated to the current error code,
+    /// using the given input language identifier
     [[nodiscard]] std::wstring ErrorMessage(DWORD languageId) const;
 
 private:
@@ -389,7 +419,7 @@ private:
     LONG m_result{ ERROR_SUCCESS };
 };
 
-
+#pragma region Overloads of relational comparison operators for RegKey
 //------------------------------------------------------------------------------
 //          Overloads of relational comparison operators for RegKey
 //------------------------------------------------------------------------------
@@ -423,7 +453,7 @@ inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
 {
     return a.Get() >= b.Get();
 }
-
+#pragma endregion
 
 //------------------------------------------------------------------------------
 //                  Private Helper Classes and Functions

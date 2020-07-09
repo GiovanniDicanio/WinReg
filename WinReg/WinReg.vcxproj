@@ -149,6 +149,7 @@
     <ClCompile Include="WinRegTest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\.gitignore" />
     <None Include="..\LICENSE" />
     <None Include="..\README.md" />
   </ItemGroup>
