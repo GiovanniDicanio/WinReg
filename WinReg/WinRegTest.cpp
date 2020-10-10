@@ -11,54 +11,47 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "WinReg.hpp"   // Module to test
-
 #include <exception>
 #include <iostream>
 #include <string>
 #include <vector>
+#include "WinReg.hpp"
 
 
-using std::optional;
-using std::pair;
 using std::vector;
-using std::wcout;
-using std::wstring;
 
-using winreg::RegKey;
 using winreg::RegException;
-
+using RegKey = winreg::RegKey<char>;
 
 // Test common RegKey methods
 void Test()
 {
-    wcout << "\n *** Testing Common RegKey Methods *** \n\n";
+    std::cout << "\n *** Testing Common RegKey Methods *** \n\n";
 
     //
     // Test subkey and value enumeration
     //
 
-    const wstring testSubKey = L"SOFTWARE\\GioTest";
+    const std::string testSubKey = "SOFTWARE\\GioTest";
     RegKey key{ HKEY_CURRENT_USER, testSubKey };
 
-    vector<wstring> subKeyNames = key.EnumSubKeys();
-    wcout << L"Subkeys:\n";
-    for (const auto& s : subKeyNames)
+    std::vector<std::string> subKeyNames = key.EnumSubKeys();
+    std::cout << "Subkeys:\n";
+    for(const auto& s : subKeyNames)
     {
-        wcout << L"  [" << s << L"]\n";
+        std::cout << "  [" << s << "]\n";
     }
-    wcout << L'\n';
+    std::cout << L'\n';
 
-    vector<pair<wstring, DWORD>> values = key.EnumValues();
-    wcout << L"Values:\n";
-    for (const auto& v : values)
+    vector<std::pair<std::string, DWORD>> values = key.EnumValues();
+    std::cout << "Values:\n";
+    for(const auto& v : values)
     {
-        wcout << L"  [" << v.first << L"](" << RegKey::RegTypeToString(v.second) << L")\n";
+        std::cout << "  [" << v.first << "](" << RegKey::RegTypeToString(v.second) << ")\n";
     }
-    wcout << L'\n';
+    std::cout << L'\n';
 
     key.Close();
-
 
     //
     // Test SetXxxValue, GetXxxValue and TryGetXxxValue methods
@@ -68,175 +61,173 @@ void Test()
 
     const DWORD testDw = 0x1234ABCD;
     const ULONGLONG testQw = 0xAABBCCDD11223344;
-    const wstring testSz = L"CiaoTestSz";
-    const wstring testExpandSz = L"%PATH%";
+    const std::string testSz = "CiaoTestSz";
+    const std::string testExpandSz = "%PATH%";
     const vector<BYTE> testBinary = { 0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33 };
-    const vector<wstring> testMultiSz = { L"Hi", L"Hello", L"Ciao" };
+    const vector<std::string> testMultiSz = { "Hi", "Hello", "Ciao" };
 
-    key.SetDwordValue(L"TestValueDword", testDw);
-    key.SetQwordValue(L"TestValueQword", testQw);
-    key.SetStringValue(L"TestValueString", testSz);
-    key.SetExpandStringValue(L"TestValueExpandString", testExpandSz);
-    key.SetMultiStringValue(L"TestValueMultiString", testMultiSz);
-    key.SetBinaryValue(L"TestValueBinary", testBinary);
+    key.SetDwordValue("TestValueDword", testDw);
+    key.SetQwordValue("TestValueQword", testQw);
+    key.SetStringValue("TestValueString", testSz);
+    key.SetExpandStringValue("TestValueExpandString", testExpandSz);
+    key.SetMultiStringValue("TestValueMultiString", testMultiSz);
+    key.SetBinaryValue("TestValueBinary", testBinary);
 
-    DWORD testDw1 = key.GetDwordValue(L"TestValueDword");
-    if (testDw1 != testDw)
+    DWORD testDw1 = key.GetDwordValue("TestValueDword");
+    if(testDw1 != testDw)
     {
-        wcout << L"RegKey::GetDwordValue failed.\n";
+        std::cout << "RegKey::GetDwordValue failed.\n";
     }
 
-    if (auto testDw2 = key.TryGetDwordValue(L"TestValueDword"))
+    if(auto testDw2 = key.TryGetDwordValue("TestValueDword"))
     {
-        if (testDw2 != testDw)
+        if(testDw2 != testDw)
         {
-            wcout << L"RegKey::TryGetDwordValue failed.\n";
+            std::cout << "RegKey::TryGetDwordValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetDwordValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetDwordValue failed (std::std::optional has no value).\n";
     }
 
-    DWORD typeId = key.QueryValueType(L"TestValueDword");
-    if (typeId != REG_DWORD)
+    DWORD typeId = key.QueryValueType("TestValueDword");
+    if(typeId != REG_DWORD)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_DWORD.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_DWORD.\n";
     }
 
-    ULONGLONG testQw1 = key.GetQwordValue(L"TestValueQword");
-    if (testQw1 != testQw)
+    ULONGLONG testQw1 = key.GetQwordValue("TestValueQword");
+    if(testQw1 != testQw)
     {
-        wcout << L"RegKey::GetQwordValue failed.\n";
+        std::cout << "RegKey::GetQwordValue failed.\n";
     }
 
-    if (auto testQw2 = key.TryGetQwordValue(L"TestValueQword"))
+    if(auto testQw2 = key.TryGetQwordValue("TestValueQword"))
     {
-        if (testQw2 != testQw)
+        if(testQw2 != testQw)
         {
-            wcout << L"RegKey::TryGetQwordValue failed.\n";
+            std::cout << "RegKey::TryGetQwordValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetQwordValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetQwordValue failed (std::std::optional has no value).\n";
     }
 
-    typeId = key.QueryValueType(L"TestValueQword");
-    if (typeId != REG_QWORD)
+    typeId = key.QueryValueType("TestValueQword");
+    if(typeId != REG_QWORD)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_QWORD.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_QWORD.\n";
     }
 
-    wstring testSz1 = key.GetStringValue(L"TestValueString");
-    if (testSz1 != testSz)
+    std::string testSz1 = key.GetStringValue("TestValueString");
+    if(testSz1 != testSz)
     {
-        wcout << L"RegKey::GetStringValue failed.\n";
+        std::cout << "RegKey::GetStringValue failed.\n";
     }
 
-    if (auto testSz2 = key.TryGetStringValue(L"TestValueString"))
+    if(auto testSz2 = key.TryGetStringValue("TestValueString"))
     {
-        if (testSz2 != testSz)
+        if(testSz2 != testSz)
         {
-            wcout << L"RegKey::TryGetStringValue failed.\n";
+            std::cout << "RegKey::TryGetStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetStringValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetStringValue failed (std::std::optional has no value).\n";
     }
 
-    typeId = key.QueryValueType(L"TestValueString");
-    if (typeId != REG_SZ)
+    typeId = key.QueryValueType("TestValueString");
+    if(typeId != REG_SZ)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_SZ.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_SZ.\n";
     }
 
-    wstring testExpandSz1 = key.GetExpandStringValue(L"TestValueExpandString");
-    if (testExpandSz1 != testExpandSz)
+    std::string testExpandSz1 = key.GetExpandStringValue("TestValueExpandString");
+    if(testExpandSz1 != testExpandSz)
     {
-        wcout << L"RegKey::GetExpandStringValue failed.\n";
+        std::cout << "RegKey::GetExpandStringValue failed.\n";
     }
 
-    if (auto testExpandSz2 = key.TryGetExpandStringValue(L"TestValueExpandString"))
+    if(auto testExpandSz2 = key.TryGetExpandStringValue("TestValueExpandString"))
     {
-        if (testExpandSz2 != testExpandSz)
+        if(testExpandSz2 != testExpandSz)
         {
-            wcout << L"RegKey::TryGetExpandStringValue failed.\n";
+            std::cout << "RegKey::TryGetExpandStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetExpandStringValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetExpandStringValue failed (std::std::optional has no value).\n";
     }
 
-    typeId = key.QueryValueType(L"TestValueExpandString");
-    if (typeId != REG_EXPAND_SZ)
+    typeId = key.QueryValueType("TestValueExpandString");
+    if(typeId != REG_EXPAND_SZ)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_EXPAND_SZ.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_EXPAND_SZ.\n";
     }
 
-    vector<wstring> testMultiSz1 = key.GetMultiStringValue(L"TestValueMultiString");
-    if (testMultiSz1 != testMultiSz)
+    vector<std::string> testMultiSz1 = key.GetMultiStringValue("TestValueMultiString");
+    if(testMultiSz1 != testMultiSz)
     {
-        wcout << L"RegKey::GetMultiStringValue failed.\n";
+        std::cout << "RegKey::GetMultiStringValue failed.\n";
     }
 
-    if (auto testMultiSz2 = key.TryGetMultiStringValue(L"TestValueMultiString"))
+    if(auto testMultiSz2 = key.TryGetMultiStringValue("TestValueMultiString"))
     {
-        if (testMultiSz2 != testMultiSz)
+        if(testMultiSz2 != testMultiSz)
         {
-            wcout << L"RegKey::TryGetMultiStringValue failed.\n";
+            std::cout << "RegKey::TryGetMultiStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetMultiStringValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetMultiStringValue failed (std::std::optional has no value).\n";
     }
 
-    typeId = key.QueryValueType(L"TestValueMultiString");
-    if (typeId != REG_MULTI_SZ)
+    typeId = key.QueryValueType("TestValueMultiString");
+    if(typeId != REG_MULTI_SZ)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_MULTI_SZ.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_MULTI_SZ.\n";
     }
 
-    vector<BYTE> testBinary1 = key.GetBinaryValue(L"TestValueBinary");
-    if (testBinary1 != testBinary)
+    vector<BYTE> testBinary1 = key.GetBinaryValue("TestValueBinary");
+    if(testBinary1 != testBinary)
     {
-        wcout << L"RegKey::GetBinaryValue failed.\n";
+        std::cout << "RegKey::GetBinaryValue failed.\n";
     }
 
-    if (auto testBinary2 = key.TryGetBinaryValue(L"TestValueBinary"))
+    if(auto testBinary2 = key.TryGetBinaryValue("TestValueBinary"))
     {
-        if (testBinary2 != testBinary)
+        if(testBinary2 != testBinary)
         {
-            wcout << L"RegKey::TryGetBinaryValue failed.\n";
+            std::cout << "RegKey::TryGetBinaryValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetBinaryValue failed (std::optional has no value).\n";
+        std::cout << "RegKey::TryGetBinaryValue failed (std::std::optional has no value).\n";
     }
 
-    typeId = key.QueryValueType(L"TestValueBinary");
-    if (typeId != REG_BINARY)
+    typeId = key.QueryValueType("TestValueBinary");
+    if(typeId != REG_BINARY)
     {
-        wcout << L"RegKey::QueryValueType failed for REG_BINARY.\n";
+        std::cout << "RegKey::QueryValueType failed for REG_BINARY.\n";
     }
-
 
     //
     // Remove some test values
     //
 
-    key.DeleteValue(L"TestValueDword");
-    key.DeleteValue(L"TestValueQword");
-    key.DeleteValue(L"TestValueString");
-    key.DeleteValue(L"TestValueExpandString");
-    key.DeleteValue(L"TestValueMultiString");
-    key.DeleteValue(L"TestValueBinary");
+    key.DeleteValue("TestValueDword");
+    key.DeleteValue("TestValueQword");
+    key.DeleteValue("TestValueString");
+    key.DeleteValue("TestValueExpandString");
+    key.DeleteValue("TestValueMultiString");
+    key.DeleteValue("TestValueBinary");
 }
-
 
 int main()
 {
@@ -245,26 +236,25 @@ int main()
 
     try
     {
-        wcout << L"=========================================\n";
-        wcout << L"*** Testing Giovanni Dicanio's WinReg ***\n";
-        wcout << L"=========================================\n\n";
+        std::cout << "=========================================\n";
+        std::cout << "*** Testing Giovanni Dicanio's WinReg ***\n";
+        std::cout << "=========================================\n\n";
 
         Test();
 
-        wcout << L"All right!! :)\n\n";
+        std::cout << "All right!! :)\n\n";
     }
-    catch (const RegException& e)
+    catch(const RegException& e)
     {
-        wcout << L"\n*** Registry Exception: " << e.what();
-        wcout << L"\n*** [Windows API error code = " << e.code() << L"]\n\n";
+        std::cout << "\n*** Registry Exception: " << e.what();
+        std::cout << "\n*** [Windows API error code = " << e.code() << "]\n\n";
         return kExitError;
     }
-    catch (const std::exception& e)
+    catch(const std::exception& e)
     {
-        wcout << L"\n*** ERROR: " << e.what() << L'\n';
+        std::cout << "\n*** ERROR: " << e.what() << L'\n';
         return kExitError;
     }
 
     return kExitOk;
 }
-
