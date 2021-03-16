@@ -1,4 +1,4 @@
-# WinReg v3.1.0
+# WinReg v4.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -46,7 +46,31 @@ DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
 wstring s  = key.GetStringValue(L"SomeStringValue");
 ```
 
-Or you can enumerate all the values under a given key with simple C++ code like this:
+You can also open a registry key using a two-step construction process:
+
+```c++
+RegKey key{};
+key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
+```
+
+The above code will throw an exception on error. If you prefer to check return codes, you can do that as well:
+
+```c++
+RegKey key;
+RegResult result = key.TryOpen(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
+if (! result)
+{
+    //
+    // Open failed.
+    //
+    // You can invoke the RegResult::Code and RegResult::ErrorMessage methods
+    // for further details.
+    //
+    ...
+}
+```
+
+You can also enumerate all the values under a given key with simple C++ code like this:
 
 ```c++
 auto values = key.EnumValues();
