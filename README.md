@@ -1,4 +1,4 @@
-# WinReg v4.1.0
+# WinReg v4.1.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -23,7 +23,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
 
-This code is currently developed using **Visual Studio 2019**. I have no longer tested the code with previous compilers. The code compiles cleanly at `/W4` in both 32-bit and 64-bit builds.
+This code is currently developed using **Visual Studio 2019** with **C++17** features enabled (`/std:c++17`). I have no longer tested the code with previous compilers. The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 
 This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** header file.
 
