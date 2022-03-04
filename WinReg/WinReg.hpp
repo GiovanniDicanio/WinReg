@@ -9,19 +9,25 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2021, March 24th
+// Last update:   2022, March 4th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
 // Registry key handles are safely and conveniently wrapped
 // in the RegKey resource manager C++ class.
 //
-// Errors are signaled throwing exceptions of class RegException.
-// In addition, there are also some methods named like TryGet...
+// Many methods are available in two forms:
+//
+// - One form that signals errors throwing exceptions
+//   of class RegException (e.g. RegKey::Open)
+//
+// - Another form that returns RegResult objects (e.g. RegKey::TryOpen)
+//
+// In addition, there are also some methods named like TryGet...Value
 // (e.g. TryGetDwordValue), that _try_ to perform the given query,
 // and return a std::optional value.
-// (In particular, on failure, the returned std::optional object
-// doesn't contain any value).
+// In particular, on failure, the returned std::optional object
+// does not contain any value.
 //
 // Unicode UTF-16 strings are represented using the std::wstring class;
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
@@ -35,7 +41,7 @@
 //
 // The MIT License(MIT)
 //
-// Copyright(c) 2017-2021 by Giovanni Dicanio
+// Copyright(c) 2017-2022 by Giovanni Dicanio
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
@@ -69,16 +75,23 @@
 #include <vector>           // std::vector
 
 
-
 namespace winreg
 {
 
-// Forward class declarations
+//
+// Forward Class Declarations
+//
+
 class RegException;
 class RegResult;
 
 
+//
+// Class Declarations
+//
+
 //------------------------------------------------------------------------------
+//
 // Safe, efficient and convenient C++ wrapper around HKEY registry key handles.
 //
 // This class is movable but not copyable.
@@ -93,6 +106,7 @@ class RegResult;
 //
 // The class is also swappable (defines a custom non-member swap);
 // relational operators are properly overloaded as well.
+//
 //------------------------------------------------------------------------------
 class RegKey
 {
@@ -308,10 +322,44 @@ public:
     // Query Operations
     //
 
-    void QueryInfoKey(DWORD& subKeys, DWORD &values, FILETIME& lastWriteTime) const;
+    // Information about a registry key (retrieved by QueryInfoKey)
+    struct InfoKey
+    {
+        DWORD    NumberOfSubKeys;
+        DWORD    NumberOfValues;
+        FILETIME LastWriteTime;
+
+        // Clear the structure fields
+        InfoKey() noexcept
+            : NumberOfSubKeys{0}
+            , NumberOfValues{0}
+        {
+            LastWriteTime.dwHighDateTime = LastWriteTime.dwLowDateTime = 0;
+        }
+
+        InfoKey(DWORD numberOfSubKeys, DWORD numberOfValues, FILETIME lastWriteTime) noexcept
+            : NumberOfSubKeys{ numberOfSubKeys }
+            , NumberOfValues{ numberOfValues }
+            , LastWriteTime{ lastWriteTime }
+        {
+        }
+    };
+
+    // Retrieve information about the registry key
+    [[nodiscard]] InfoKey QueryInfoKey() const;
 
     // Return the DWORD type ID for the input registry value
     [[nodiscard]] DWORD QueryValueType(const std::wstring& valueName) const;
+
+
+    enum class KeyReflection
+    {
+        ReflectionEnabled,
+        ReflectionDisabled
+    };
+
+    // Determines whether reflection has been disabled or enabled for the specified key
+    [[nodiscard]] KeyReflection QueryReflectionKey() const;
 
     // Enumerate the subkeys of the registry key, using RegEnumKeyEx
     [[nodiscard]] std::vector<std::wstring> EnumSubKeys() const;
@@ -320,6 +368,30 @@ public:
     // Returns a vector of pairs: In each pair, the wstring is the value name,
     // the DWORD is the value type.
     [[nodiscard]] std::vector<std::pair<std::wstring, DWORD>> EnumValues() const;
+
+
+    //
+    // Query Operations Returning std::optional
+    // (instead of throwing RegException on error)
+    //
+
+    // Retrieve information about the registry key
+    [[nodiscard]] std::optional<InfoKey> TryQueryInfoKey() const;
+
+    // Return the DWORD type ID for the input registry value
+    [[nodiscard]] std::optional<DWORD> TryQueryValueType(const std::wstring& valueName) const;
+
+
+    // Determines whether reflection has been disabled or enabled for the specified key
+    [[nodiscard]] std::optional<KeyReflection> TryQueryReflectionKey() const;
+
+    // Enumerate the subkeys of the registry key, using RegEnumKeyEx
+    [[nodiscard]] std::optional<std::vector<std::wstring>> TryEnumSubKeys() const;
+
+    // Enumerate the values under the registry key, using RegEnumValue.
+    // Returns a vector of pairs: In each pair, the wstring is the value name,
+    // the DWORD is the value type.
+    [[nodiscard]] std::optional<std::vector<std::pair<std::wstring, DWORD>>> TryEnumValues() const;
 
 
     //
@@ -335,18 +407,39 @@ public:
     void SaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes) const;
     void EnableReflectionKey();
     void DisableReflectionKey();
-    [[nodiscard]] bool QueryReflectionKey() const;
     void ConnectRegistry(const std::wstring& machineName, HKEY hKeyPredefined);
+
+
+    //
+    // Misc Registry API Wrappers Returning RegResult Status
+    // (instead of throwing RegException on error)
+    //
+
+    [[nodiscard]] RegResult TryDeleteValue(const std::wstring& valueName) noexcept;
+    [[nodiscard]] RegResult TryDeleteKey(const std::wstring& subKey, REGSAM desiredAccess) noexcept;
+    [[nodiscard]] RegResult TryDeleteTree(const std::wstring& subKey) noexcept;
+    [[nodiscard]] RegResult TryCopyTree(const std::wstring& sourceSubKey, const RegKey& destKey) noexcept;
+    [[nodiscard]] RegResult TryFlushKey() noexcept;
+    [[nodiscard]] RegResult TryLoadKey(const std::wstring& subKey, const std::wstring& filename) noexcept;
+    [[nodiscard]] RegResult TrySaveKey(const std::wstring& filename, SECURITY_ATTRIBUTES* securityAttributes) const noexcept;
+    [[nodiscard]] RegResult TryEnableReflectionKey() noexcept;
+    [[nodiscard]] RegResult TryDisableReflectionKey() noexcept;
+    [[nodiscard]] RegResult TryConnectRegistry(const std::wstring& machineName, HKEY hKeyPredefined) noexcept;
 
 
     // Return a string representation of Windows registry types
     [[nodiscard]] static std::wstring RegTypeToString(DWORD regType);
+
 
     //
     // Relational comparison operators are overloaded as non-members
     // ==, !=, <, <=, >, >=
     //
 
+
+    //
+    // Private Implementation
+    //
 
 private:
     // The wrapped registry key handle
@@ -656,7 +749,7 @@ private:
     //
 
     const wchar_t* currStringPtr = &data[0];
-    const wchar_t* const endPtr = &data[0] + data.size() - 1;
+    const wchar_t* const endPtr  = &data[0] + data.size() - 1;
 
     while (currStringPtr < endPtr)
     {
@@ -1808,6 +1901,154 @@ inline std::vector<std::pair<std::wstring, DWORD>> RegKey::EnumValues() const
 }
 
 
+inline std::optional<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
+{
+    _ASSERTE(IsValid());
+
+    // Get some useful enumeration info, like the total number of subkeys
+    // and the maximum length of the subkey names
+    DWORD subKeyCount = 0;
+    DWORD maxSubKeyNameLen = 0;
+    LONG retCode = ::RegQueryInfoKeyW(
+        m_hKey,
+        nullptr,    // no user-defined class
+        nullptr,    // no user-defined class size
+        nullptr,    // reserved
+        &subKeyCount,
+        &maxSubKeyNameLen,
+        nullptr,    // no subkey class length
+        nullptr,    // no value count
+        nullptr,    // no value name max length
+        nullptr,    // no max value length
+        nullptr,    // no security descriptor
+        nullptr     // no last write time
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    // NOTE: According to the MSDN documentation, the size returned for subkey name max length
+    // does *not* include the terminating NUL, so let's add +1 to take it into account
+    // when I allocate the buffer for reading subkey names.
+    maxSubKeyNameLen++;
+
+    // Preallocate a buffer for the subkey names
+    auto nameBuffer = std::make_unique<wchar_t[]>(maxSubKeyNameLen);
+
+    // The result subkey names will be stored here
+    std::vector<std::wstring> subkeyNames;
+
+    // Reserve room in the vector to speed up the following insertion loop
+    subkeyNames.reserve(subKeyCount);
+
+    // Enumerate all the subkeys
+    for (DWORD index = 0; index < subKeyCount; index++)
+    {
+        // Get the name of the current subkey
+        DWORD subKeyNameLen = maxSubKeyNameLen;
+        retCode = ::RegEnumKeyExW(
+            m_hKey,
+            index,
+            nameBuffer.get(),
+            &subKeyNameLen,
+            nullptr, // reserved
+            nullptr, // no class
+            nullptr, // no class
+            nullptr  // no last write time
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            return {};
+        }
+
+        // On success, the ::RegEnumKeyEx API writes the length of the
+        // subkey name in the subKeyNameLen output parameter
+        // (not including the terminating NUL).
+        // So I can build a wstring based on that length.
+        subkeyNames.emplace_back(nameBuffer.get(), subKeyNameLen);
+    }
+
+    return subkeyNames;
+}
+
+
+inline std::optional<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumValues() const
+{
+    _ASSERTE(IsValid());
+
+    // Get useful enumeration info, like the total number of values
+    // and the maximum length of the value names
+    DWORD valueCount = 0;
+    DWORD maxValueNameLen = 0;
+    LONG retCode = ::RegQueryInfoKeyW(
+        m_hKey,
+        nullptr,    // no user-defined class
+        nullptr,    // no user-defined class size
+        nullptr,    // reserved
+        nullptr,    // no subkey count
+        nullptr,    // no subkey max length
+        nullptr,    // no subkey class length
+        &valueCount,
+        &maxValueNameLen,
+        nullptr,    // no max value length
+        nullptr,    // no security descriptor
+        nullptr     // no last write time
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    // NOTE: According to the MSDN documentation, the size returned for value name max length
+    // does *not* include the terminating NUL, so let's add +1 to take it into account
+    // when I allocate the buffer for reading value names.
+    maxValueNameLen++;
+
+    // Preallocate a buffer for the value names
+    auto nameBuffer = std::make_unique<wchar_t[]>(maxValueNameLen);
+
+    // The value names and types will be stored here
+    std::vector<std::pair<std::wstring, DWORD>> valueInfo;
+
+    // Reserve room in the vector to speed up the following insertion loop
+    valueInfo.reserve(valueCount);
+
+    // Enumerate all the values
+    for (DWORD index = 0; index < valueCount; index++)
+    {
+        // Get the name and the type of the current value
+        DWORD valueNameLen = maxValueNameLen;
+        DWORD valueType = 0;
+        retCode = ::RegEnumValueW(
+            m_hKey,
+            index,
+            nameBuffer.get(),
+            &valueNameLen,
+            nullptr,    // reserved
+            &valueType,
+            nullptr,    // no data
+            nullptr     // no data size
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            return {};
+        }
+
+        // On success, the RegEnumValue API writes the length of the
+        // value name in the valueNameLen output parameter
+        // (not including the terminating NUL).
+        // So we can build a wstring based on that.
+        valueInfo.emplace_back(
+            std::wstring{ nameBuffer.get(), valueNameLen },
+            valueType
+        );
+    }
+
+    return valueInfo;
+}
+
+
 inline DWORD RegKey::QueryValueType(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
@@ -1832,32 +2073,112 @@ inline DWORD RegKey::QueryValueType(const std::wstring& valueName) const
 }
 
 
-inline void RegKey::QueryInfoKey(DWORD& subKeys, DWORD &values, FILETIME& lastWriteTime) const
+inline std::optional<DWORD> RegKey::TryQueryValueType(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
-    subKeys = 0;
-    values = 0;
-    lastWriteTime.dwLowDateTime = lastWriteTime.dwHighDateTime = 0;
+    DWORD typeId = 0;     // will be returned by RegQueryValueEx
 
+    LONG retCode = ::RegQueryValueExW(
+        m_hKey,
+        valueName.c_str(),
+        nullptr,    // reserved
+        &typeId,
+        nullptr,    // not interested
+        nullptr     // not interested
+    );
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    return typeId;
+}
+
+
+inline RegKey::InfoKey RegKey::QueryInfoKey() const
+{
+    _ASSERTE(IsValid());
+
+    InfoKey infoKey{};
     LONG retCode = ::RegQueryInfoKeyW(
         m_hKey,
         nullptr,
         nullptr,
         nullptr,
-        &subKeys,
+        &(infoKey.NumberOfSubKeys),
         nullptr,
         nullptr,
-        &values,
+        &(infoKey.NumberOfValues),
         nullptr,
         nullptr,
         nullptr,
-        &lastWriteTime
+        &(infoKey.LastWriteTime)
     );
     if (retCode != ERROR_SUCCESS)
     {
         throw RegException{ retCode, "RegQueryInfoKeyW failed." };
     }
+
+    return infoKey;
+}
+
+
+inline std::optional<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
+{
+    _ASSERTE(IsValid());
+
+    InfoKey infoKey{};
+    LONG retCode = ::RegQueryInfoKeyW(
+        m_hKey,
+        nullptr,
+        nullptr,
+        nullptr,
+        &(infoKey.NumberOfSubKeys),
+        nullptr,
+        nullptr,
+        &(infoKey.NumberOfValues),
+        nullptr,
+        nullptr,
+        nullptr,
+        &(infoKey.LastWriteTime)
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    return infoKey;
+}
+
+
+inline RegKey::KeyReflection RegKey::QueryReflectionKey() const
+{
+    BOOL isReflectionDisabled = FALSE;
+    LONG retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
+    if (retCode != ERROR_SUCCESS)
+    {
+        throw RegException{ retCode, "RegQueryReflectionKey failed." };
+    }
+
+    return (isReflectionDisabled ? KeyReflection::ReflectionDisabled
+                                 : KeyReflection::ReflectionEnabled);
+}
+
+
+inline std::optional<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
+{
+    BOOL isReflectionDisabled = FALSE;
+    LONG retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
+    if (retCode != ERROR_SUCCESS)
+    {
+        return {};
+    }
+
+    KeyReflection keyReflection = isReflectionDisabled ? KeyReflection::ReflectionDisabled
+                                                       : KeyReflection::ReflectionEnabled;
+    return keyReflection;
 }
 
 
@@ -1873,6 +2194,14 @@ inline void RegKey::DeleteValue(const std::wstring& valueName)
 }
 
 
+inline RegResult RegKey::TryDeleteValue(const std::wstring& valueName) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegDeleteValueW(m_hKey, valueName.c_str()) };
+}
+
+
 inline void RegKey::DeleteKey(const std::wstring& subKey, const REGSAM desiredAccess)
 {
     _ASSERTE(IsValid());
@@ -1882,6 +2211,14 @@ inline void RegKey::DeleteKey(const std::wstring& subKey, const REGSAM desiredAc
     {
         throw RegException{ retCode, "RegDeleteKeyExW failed." };
     }
+}
+
+
+inline RegResult RegKey::TryDeleteKey(const std::wstring& subKey, const REGSAM desiredAccess) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegDeleteKeyExW(m_hKey, subKey.c_str(), desiredAccess, 0) };
 }
 
 
@@ -1897,6 +2234,14 @@ inline void RegKey::DeleteTree(const std::wstring& subKey)
 }
 
 
+inline RegResult RegKey::TryDeleteTree(const std::wstring& subKey) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegDeleteTreeW(m_hKey, subKey.c_str()) };
+}
+
+
 inline void RegKey::CopyTree(const std::wstring& sourceSubKey, const RegKey& destKey)
 {
     _ASSERTE(IsValid());
@@ -1906,6 +2251,14 @@ inline void RegKey::CopyTree(const std::wstring& sourceSubKey, const RegKey& des
     {
         throw RegException{ retCode, "RegCopyTreeW failed." };
     }
+}
+
+
+inline RegResult RegKey::TryCopyTree(const std::wstring& sourceSubKey, const RegKey& destKey) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegCopyTreeW(m_hKey, sourceSubKey.c_str(), destKey.Get()) };
 }
 
 
@@ -1921,6 +2274,14 @@ inline void RegKey::FlushKey()
 }
 
 
+inline RegResult RegKey::TryFlushKey() noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegFlushKey(m_hKey) };
+}
+
+
 inline void RegKey::LoadKey(const std::wstring& subKey, const std::wstring& filename)
 {
     Close();
@@ -1930,6 +2291,14 @@ inline void RegKey::LoadKey(const std::wstring& subKey, const std::wstring& file
     {
         throw RegException{ retCode, "RegLoadKeyW failed." };
     }
+}
+
+
+inline RegResult RegKey::TryLoadKey(const std::wstring& subKey, const std::wstring& filename) noexcept
+{
+    Close();
+
+    return RegResult{ ::RegLoadKeyW(m_hKey, subKey.c_str(), filename.c_str()) };
 }
 
 
@@ -1948,6 +2317,17 @@ inline void RegKey::SaveKey(
 }
 
 
+inline RegResult RegKey::TrySaveKey(
+    const std::wstring& filename,
+    SECURITY_ATTRIBUTES* const securityAttributes
+) const noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegSaveKeyW(m_hKey, filename.c_str(), securityAttributes) };
+}
+
+
 inline void RegKey::EnableReflectionKey()
 {
     LONG retCode = ::RegEnableReflectionKey(m_hKey);
@@ -1955,6 +2335,12 @@ inline void RegKey::EnableReflectionKey()
     {
         throw RegException{ retCode, "RegEnableReflectionKey failed." };
     }
+}
+
+
+inline RegResult RegKey::TryEnableReflectionKey() noexcept
+{
+    return RegResult{ ::RegEnableReflectionKey(m_hKey) };
 }
 
 
@@ -1968,16 +2354,9 @@ inline void RegKey::DisableReflectionKey()
 }
 
 
-inline bool RegKey::QueryReflectionKey() const
+inline RegResult RegKey::TryDisableReflectionKey() noexcept
 {
-    BOOL isReflectionDisabled = FALSE;
-    LONG retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "RegQueryReflectionKey failed." };
-    }
-
-    return (isReflectionDisabled ? true : false);
+    return RegResult{ ::RegDisableReflectionKey(m_hKey) };
 }
 
 
@@ -1995,6 +2374,26 @@ inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY 
 
     // Take ownership of the result key
     m_hKey = hKeyResult;
+}
+
+
+inline RegResult RegKey::TryConnectRegistry(const std::wstring& machineName, const HKEY hKeyPredefined) noexcept
+{
+    // Safely close any previously opened key
+    Close();
+
+    HKEY hKeyResult = nullptr;
+    RegResult retCode{ ::RegConnectRegistryW(machineName.c_str(), hKeyPredefined, &hKeyResult) };
+    if (retCode.Failed())
+    {
+        return retCode;
+    }
+
+    // Take ownership of the result key
+    m_hKey = hKeyResult;
+
+    _ASSERTE(retCode.IsOk());
+    return retCode;
 }
 
 

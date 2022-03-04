@@ -1,4 +1,4 @@
-# WinReg v4.1.2
+# WinReg v5.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -103,6 +103,10 @@ else
 }
 ```
 
+Note that many methods are available in _two forms_: one that _throws an exception_ of type `RegException` on error (e.g. `RegKey::Open`),
+and another that _returns an error status object_ of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
+In addition, as indicated above, some methods like the `RegKey::TryGet...Value` ones return `std::optional` instead of throwing exceptions;
+in case of errors, the returned `std::optional` _does not contain_ any value.
 
 You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
