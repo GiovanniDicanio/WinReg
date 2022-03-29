@@ -254,13 +254,13 @@ public:
     // Registry Value Setters
     //
 
-    void SetDwordValue(const std::wstring& valueName, DWORD data);
-    void SetQwordValue(const std::wstring& valueName, const ULONGLONG& data);
-    void SetStringValue(const std::wstring& valueName, const std::wstring& data);
-    void SetExpandStringValue(const std::wstring& valueName, const std::wstring& data);
-    void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
-    void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
-    void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
+    RegResult SetDwordValue(const std::wstring& valueName, DWORD data) noexcept;
+    RegResult SetQwordValue(const std::wstring& valueName, const ULONGLONG& data) noexcept;
+    RegResult SetStringValue(const std::wstring& valueName, const std::wstring& data) noexcept;
+    RegResult SetExpandStringValue(const std::wstring& valueName, const std::wstring& data) noexcept;
+    RegResult SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data) noexcept;
+    RegResult SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data) noexcept;
+    RegResult SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize) noexcept;
 
 
     //
@@ -993,7 +993,7 @@ inline RegResult RegKey::TryOpen(
 }
 
 
-inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD data)
+inline RegResult RegKey::SetDwordValue(const std::wstring& valueName, const DWORD data)
 {
     _ASSERTE(IsValid());
 
@@ -1005,14 +1005,11 @@ inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD dat
         reinterpret_cast<const BYTE*>(&data),
         sizeof(data)
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write DWORD value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG& data)
+inline RegResult RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG& data)
 {
     _ASSERTE(IsValid());
 
@@ -1024,14 +1021,11 @@ inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG
         reinterpret_cast<const BYTE*>(&data),
         sizeof(data)
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write QWORD value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wstring& data)
+inline RegResult RegKey::SetStringValue(const std::wstring& valueName, const std::wstring& data)
 {
     _ASSERTE(IsValid());
 
@@ -1046,14 +1040,11 @@ inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wst
         reinterpret_cast<const BYTE*>(data.c_str()),
         dataSize
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write string value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const std::wstring& data)
+inline RegResult RegKey::SetExpandStringValue(const std::wstring& valueName, const std::wstring& data)
 {
     _ASSERTE(IsValid());
 
@@ -1068,14 +1059,11 @@ inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const st
         reinterpret_cast<const BYTE*>(data.c_str()),
         dataSize
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write expand string value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetMultiStringValue(
+inline RegResult RegKey::SetMultiStringValue(
     const std::wstring& valueName,
     const std::vector<std::wstring>& data
 )
@@ -1096,14 +1084,11 @@ inline void RegKey::SetMultiStringValue(
         reinterpret_cast<const BYTE*>(&multiString[0]),
         dataSize
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write multi-string value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data)
+inline RegResult RegKey::SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data)
 {
     _ASSERTE(IsValid());
 
@@ -1118,14 +1103,11 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
         &data[0],
         dataSize
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write binary data value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
-inline void RegKey::SetBinaryValue(
+inline RegResult RegKey::SetBinaryValue(
     const std::wstring& valueName,
     const void* const data,
     const DWORD dataSize
@@ -1141,10 +1123,7 @@ inline void RegKey::SetBinaryValue(
         static_cast<const BYTE*>(data),
         dataSize
     );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write binary data value: RegSetValueExW failed." };
-    }
+    return RegResult{ retCode };
 }
 
 
