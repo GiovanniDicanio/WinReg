@@ -269,13 +269,13 @@ public:
     // Registry Value Setters
     //
 
-    [[nodiscard]] RegResult SetDwordValue(const std::wstring& valueName, DWORD data) noexcept;
-    [[nodiscard]] RegResult SetQwordValue(const std::wstring& valueName, const ULONGLONG& data) noexcept;
-    [[nodiscard]] RegResult SetStringValue(const std::wstring& valueName, const std::wstring& data) noexcept;
-    [[nodiscard]] RegResult SetExpandStringValue(const std::wstring& valueName, const std::wstring& data) noexcept;
-    [[nodiscard]] RegResult SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data) noexcept;
-    [[nodiscard]] RegResult SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data) noexcept;
-    [[nodiscard]] RegResult SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize) noexcept;
+    [[nodiscard]] RegResult SetDwordValue(const std::wstring& valueName, DWORD data);
+    [[nodiscard]] RegResult SetQwordValue(const std::wstring& valueName, const ULONGLONG& data);
+    [[nodiscard]] RegResult SetStringValue(const std::wstring& valueName, const std::wstring& data);
+    [[nodiscard]] RegResult SetExpandStringValue(const std::wstring& valueName, const std::wstring& data);
+    [[nodiscard]] RegResult SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
+    [[nodiscard]] RegResult SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
+    [[nodiscard]] RegResult SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
 
 
     //
