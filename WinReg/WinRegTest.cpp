@@ -82,13 +82,44 @@ void Test()
     key.SetMultiStringValue(L"TestValueMultiString", testMultiSz);
     key.SetBinaryValue(L"TestValueBinary", testBinary);
 
+    if (key.TrySetDwordValue(L"TestTryValueDword", testDw).Failed())
+    {
+        wcout << L"RegKey::TrySetDwordValue failed.\n";
+    }
+
+    if (key.TrySetQwordValue(L"TestTryValueQword", testQw).Failed())
+    {
+        wcout << L"RegKey::TrySetQwordValue failed.\n";
+    }
+
+    if (key.TrySetStringValue(L"TestTryValueString", testSz).Failed())
+    {
+        wcout << L"RegKey::TrySetStringValue failed.\n";
+    }
+
+    if (key.TrySetExpandStringValue(L"TestTryValueExpandString", testExpandSz).Failed())
+    {
+        wcout << L"RegKey::TrySetExpandStringValue failed.\n";
+    }
+
+    if (key.TrySetMultiStringValue(L"TestTryValueMultiString", testMultiSz).Failed())
+    {
+        wcout << L"RegKey::TrySetMultiStringValue failed.\n";
+    }
+
+    if (key.TrySetBinaryValue(L"TestTryValueBinary", testBinary).Failed())
+    {
+        wcout << L"RegKey::TrySetBinaryValue failed.\n";
+    }
+
+
     DWORD testDw1 = key.GetDwordValue(L"TestValueDword");
     if (testDw1 != testDw)
     {
         wcout << L"RegKey::GetDwordValue failed.\n";
     }
 
-    if (auto testDw2 = key.TryGetDwordValue(L"TestValueDword"))
+    if (auto testDw2 = key.TryGetDwordValue(L"TestTryValueDword"))
     {
         if (testDw2 != testDw)
         {
@@ -112,7 +143,7 @@ void Test()
         wcout << L"RegKey::GetQwordValue failed.\n";
     }
 
-    if (auto testQw2 = key.TryGetQwordValue(L"TestValueQword"))
+    if (auto testQw2 = key.TryGetQwordValue(L"TestTryValueQword"))
     {
         if (testQw2 != testQw)
         {
@@ -136,7 +167,7 @@ void Test()
         wcout << L"RegKey::GetStringValue failed.\n";
     }
 
-    if (auto testSz2 = key.TryGetStringValue(L"TestValueString"))
+    if (auto testSz2 = key.TryGetStringValue(L"TestTryValueString"))
     {
         if (testSz2 != testSz)
         {
@@ -160,7 +191,7 @@ void Test()
         wcout << L"RegKey::GetExpandStringValue failed.\n";
     }
 
-    if (auto testExpandSz2 = key.TryGetExpandStringValue(L"TestValueExpandString"))
+    if (auto testExpandSz2 = key.TryGetExpandStringValue(L"TestTryValueExpandString"))
     {
         if (testExpandSz2 != testExpandSz)
         {
@@ -184,7 +215,7 @@ void Test()
         wcout << L"RegKey::GetMultiStringValue failed.\n";
     }
 
-    if (auto testMultiSz2 = key.TryGetMultiStringValue(L"TestValueMultiString"))
+    if (auto testMultiSz2 = key.TryGetMultiStringValue(L"TestTryValueMultiString"))
     {
         if (testMultiSz2 != testMultiSz)
         {
@@ -208,7 +239,7 @@ void Test()
         wcout << L"RegKey::GetBinaryValue failed.\n";
     }
 
-    if (auto testBinary2 = key.TryGetBinaryValue(L"TestValueBinary"))
+    if (auto testBinary2 = key.TryGetBinaryValue(L"TestTryValueBinary"))
     {
         if (testBinary2 != testBinary)
         {
@@ -237,6 +268,13 @@ void Test()
     key.DeleteValue(L"TestValueExpandString");
     key.DeleteValue(L"TestValueMultiString");
     key.DeleteValue(L"TestValueBinary");
+
+    key.DeleteValue(L"TestTryValueDword");
+    key.DeleteValue(L"TestTryValueQword");
+    key.DeleteValue(L"TestTryValueString");
+    key.DeleteValue(L"TestTryValueExpandString");
+    key.DeleteValue(L"TestTryValueMultiString");
+    key.DeleteValue(L"TestTryValueBinary");
 }
 
 

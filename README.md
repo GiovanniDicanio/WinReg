@@ -1,4 +1,4 @@
-# WinReg v5.0.1
+# WinReg v5.1.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
