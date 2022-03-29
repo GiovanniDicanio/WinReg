@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2022, March 21th
+// Last update:   2022, March 29th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -276,6 +276,36 @@ public:
     void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
+
+
+    //
+    // Registry Value Setters Returning RegResult
+    // (instead of throwing RegException on error)
+    //
+
+    [[nodiscard]] RegResult TrySetDwordValue(const std::wstring& valueName, DWORD data) noexcept;
+
+    [[nodiscard]] RegResult TrySetQwordValue(const std::wstring& valueName,
+                                             const ULONGLONG& data) noexcept;
+
+    [[nodiscard]] RegResult TrySetStringValue(const std::wstring& valueName,
+                                              const std::wstring& data) noexcept;
+
+    [[nodiscard]] RegResult TrySetExpandStringValue(const std::wstring& valueName,
+                                                    const std::wstring& data) noexcept;
+
+    [[nodiscard]] RegResult TrySetMultiStringValue(const std::wstring& valueName,
+                                                   const std::vector<std::wstring>& data);
+    // Note: The TrySetMultiStringValue method CANNOT be marked noexcept,
+    // because internally the method *dynamically allocates memory* for creating the multi-string
+    // that will be stored in the Registry.
+
+    [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
+                                              const std::vector<BYTE>& data) noexcept;
+
+    [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
+                                              const void* data,
+                                              DWORD dataSize) noexcept;
 
 
     //
@@ -1248,6 +1278,138 @@ inline void RegKey::SetBinaryValue(
     {
         throw RegException{ retCode, "Cannot write binary data value: RegSetValueExW failed." };
     }
+}
+
+
+inline RegResult RegKey::TrySetDwordValue(const std::wstring& valueName, const DWORD data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_DWORD,
+        reinterpret_cast<const BYTE*>(&data),
+        sizeof(data)
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetQwordValue(const std::wstring& valueName,
+                                          const ULONGLONG& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_QWORD,
+        reinterpret_cast<const BYTE*>(&data),
+        sizeof(data)
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName,
+                                           const std::wstring& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // String size including the terminating NUL, in bytes
+    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_SZ,
+        reinterpret_cast<const BYTE*>(data.c_str()),
+        dataSize
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetExpandStringValue(const std::wstring& valueName,
+                                                 const std::wstring& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // String size including the terminating NUL, in bytes
+    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_EXPAND_SZ,
+        reinterpret_cast<const BYTE*>(data.c_str()),
+        dataSize
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
+                                                const std::vector<std::wstring>& data)
+{
+    _ASSERTE(IsValid());
+
+    // First, we have to build a double-NUL-terminated multi-string from the input data.
+    //
+    // NOTE: This is the reason why I *cannot* mark this method noexcept,
+    // since a *dynamic allocation* happens for creating the std::vector in BuildMultiString.
+    // And, if dynamic memory allocations fail, an exception is thrown.
+    //
+    const std::vector<wchar_t> multiString = detail::BuildMultiString(data);
+
+    // Total size, in bytes, of the whole multi-string structure
+    const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_MULTI_SZ,
+        reinterpret_cast<const BYTE*>(&multiString[0]),
+        dataSize
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
+                                           const std::vector<BYTE>& data) noexcept
+{
+    _ASSERTE(IsValid());
+
+    // Total data size, in bytes
+    const DWORD dataSize = static_cast<DWORD>(data.size());
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_BINARY,
+        &data[0],
+        dataSize
+    ) };
+}
+
+
+inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
+                                           const void* const data,
+                                           const DWORD dataSize) noexcept
+{
+    _ASSERTE(IsValid());
+
+    return RegResult{ ::RegSetValueExW(
+        m_hKey,
+        valueName.c_str(),
+        0, // reserved
+        REG_BINARY,
+        static_cast<const BYTE*>(data),
+        dataSize
+    ) };
 }
 
 
