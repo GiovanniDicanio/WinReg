@@ -1,13 +1,17 @@
-# WinReg v4.1.1
+# WinReg v5.0.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
 
 The Windows Registry C-interface API is  _very low-level_ and _hard_ to use.
 
-I developed some **C++ wrappers** around this low-level Win32 API, to raise the semantic level, using C++ classes like `std::wstring`, `std::vector`, etc. instead of raw C-style buffers and low-level mechanisms. 
+I developed some **C++ wrappers** around this low-level Win32 API, to raise the semantic level, 
+using C++ classes like `std::wstring`, `std::vector`, etc. instead of raw C-style buffers and 
+low-level mechanisms. 
 
-For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminated C-style strings is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ between high-level C++ STL-based stuff and the low-level Win32 C-interface API.
+For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminated C-style strings 
+is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ 
+between high-level C++ STL-based stuff and the low-level Win32 C-interface API.
 
 Moreover, Win32 error codes are translated to C++ exceptions.
 
@@ -23,9 +27,12 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
 
-This code is currently developed using **Visual Studio 2019** with **C++17** features enabled (`/std:c++17`). I have no longer tested the code with previous compilers. The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
+This code is currently developed using **Visual Studio 2019** with **C++17** features enabled 
+(`/std:c++17`). I have no longer tested the code with previous compilers. 
+The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 
-This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** header file.
+This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
+header file.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -33,9 +40,11 @@ The library exposes three main classes:
 
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
-* `RegResult`: a tiny wrapper around Windows Registry API `LONG` error codes, returned by some `Try` methods (like `RegKey::TryOpen`)
+* `RegResult`: a tiny wrapper around Windows Registry API `LSTATUS` error codes, 
+returned by some `Try` methods (like `RegKey::TryOpen`)
 
-There are many member functions inside the `RegKey` class, that wrap many parts of the native C-interface Windows Registry API, in a convenient C++ way.
+There are many member functions inside the `RegKey` class, that wrap many parts of the native 
+C-interface Windows Registry API, in a convenient higher-level C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
@@ -53,7 +62,8 @@ RegKey key{};
 key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 ```
 
-The above code will throw an exception on error. If you prefer to check return codes, you can do that as well:
+The above code will throw an exception on error. If you prefer to check return codes, you can do 
+that as well:
 
 ```c++
 RegKey key;
@@ -87,7 +97,8 @@ for (const auto & v : values)
 }
 ```
 
-In addition, you can also use the `RegKey::TryGet...Value` methods, that return `std::optional` instead of throwing on errors:
+In addition, you can also use the `RegKey::TryGet...Value` methods, that return `std::optional` 
+instead of throwing on errors:
 
 ```c++
 // RegKey::TryGetDwordValue() returns a std::optional<DWORD>;
@@ -103,6 +114,12 @@ else
 }
 ```
 
+Note that many methods are available in _two forms_: one that _throws an exception_ of type 
+`RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
+of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
+In addition, as indicated above, some methods like the `RegKey::TryGet...Value` ones return 
+`std::optional` instead of throwing exceptions; in case of errors, the returned `std::optional` 
+_does not contain_ any value.
 
 You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
@@ -110,5 +127,5 @@ The library stuff lives under the `winreg` namespace.
 
 See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **documentation**.
 
-Thanks to everyone who contributed to this project with some additional features and constructive comments and suggestions.
-
+Thanks to everyone who contributed to this project with some additional features and constructive 
+comments and suggestions.

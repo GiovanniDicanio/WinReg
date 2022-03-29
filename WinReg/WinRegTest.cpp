@@ -29,7 +29,9 @@ using winreg::RegKey;
 using winreg::RegException;
 
 
+//
 // Test common RegKey methods
+//
 void Test()
 {
     wcout << "\n *** Testing Common RegKey Methods *** \n\n";
@@ -267,4 +269,3 @@ int main()
 
     return kExitOk;
 }
-
