@@ -73,6 +73,7 @@ void Test()
     const wstring testSz = L"CiaoTestSz";
     const wstring testExpandSz = L"%PATH%";
     const vector<BYTE> testBinary = { 0xAA, 0xBB, 0xCC, 0x11, 0x22, 0x33 };
+    const vector<BYTE> testEmptyBinary; // used to test zero-length binary data array
     const vector<wstring> testMultiSz = { L"Hi", L"Hello", L"Ciao" };
 
     key.SetDwordValue(L"TestValueDword", testDw);
@@ -81,6 +82,8 @@ void Test()
     key.SetExpandStringValue(L"TestValueExpandString", testExpandSz);
     key.SetMultiStringValue(L"TestValueMultiString", testMultiSz);
     key.SetBinaryValue(L"TestValueBinary", testBinary);
+    key.SetBinaryValue(L"TestEmptyBinary", testEmptyBinary);
+    // TODO: May add tests for other empty values, like empty string, etc.
 
     if (key.TrySetDwordValue(L"TestTryValueDword", testDw).Failed())
     {
@@ -110,6 +113,11 @@ void Test()
     if (key.TrySetBinaryValue(L"TestTryValueBinary", testBinary).Failed())
     {
         wcout << L"RegKey::TrySetBinaryValue failed.\n";
+    }
+
+    if (key.TrySetBinaryValue(L"TestTryEmptyBinary", testEmptyBinary).Failed())
+    {
+        wcout << L"RegKey::TrySetBinaryValue failed with zero-length binary array.\n";
     }
 
 
@@ -255,6 +263,25 @@ void Test()
     if (typeId != REG_BINARY)
     {
         wcout << L"RegKey::QueryValueType failed for REG_BINARY.\n";
+    }
+
+    // Test the special case of zero-length binary array
+    vector<BYTE> testEmptyBinary1 = key.GetBinaryValue(L"TestEmptyBinary");
+    if (testEmptyBinary1 != testEmptyBinary)
+    {
+        wcout << L"RegKey::GetBinaryValue failed with zero-length binary data.\n";
+    }
+
+    if (auto testEmptyBinary2 = key.TryGetBinaryValue(L"TestTryEmptyBinary"))
+    {
+        if (testEmptyBinary2 != testEmptyBinary)
+        {
+            wcout << L"RegKey::TryGetBinaryValue failed with zero-length binary data.\n";
+        }
+    }
+    else
+    {
+        wcout << L"RegKey::TryGetBinaryValue failed (std::optional has no value).\n";
     }
 
 
