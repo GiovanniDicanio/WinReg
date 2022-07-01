@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2022, March 29th
+// Last update:   2022, July 1st
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -773,7 +773,7 @@ private:
     // -------------------------------------------------------------------------
     //// *** Previous parsing code - Assumes an empty string terminates the sequence ***
     //
-    //const wchar_t* currStringPtr = &data[0];
+    //const wchar_t* currStringPtr = data.data();
     //while (*currStringPtr != L'\0')
     //{
     //    // Current string is NUL-terminated, so get its length calling wcslen
@@ -788,8 +788,8 @@ private:
     // -------------------------------------------------------------------------
     //
 
-    const wchar_t* currStringPtr = &data[0];
-    const wchar_t* const endPtr  = &data[0] + data.size() - 1;
+    const wchar_t* currStringPtr = data.data();
+    const wchar_t* const endPtr  = data.data() + data.size() - 1;
 
     while (currStringPtr < endPtr)
     {
@@ -1226,7 +1226,7 @@ inline void RegKey::SetMultiStringValue(
         valueName.c_str(),
         0, // reserved
         REG_MULTI_SZ,
-        reinterpret_cast<const BYTE*>(&multiString[0]),
+        reinterpret_cast<const BYTE*>(multiString.data()),
         dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1248,7 +1248,7 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
         valueName.c_str(),
         0, // reserved
         REG_BINARY,
-        &data[0],
+        data.data(),
         dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1371,7 +1371,7 @@ inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
         valueName.c_str(),
         0, // reserved
         REG_MULTI_SZ,
-        reinterpret_cast<const BYTE*>(&multiString[0]),
+        reinterpret_cast<const BYTE*>(multiString.data()),
         dataSize
     ) };
 }
@@ -1390,7 +1390,7 @@ inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
         valueName.c_str(),
         0, // reserved
         REG_BINARY,
-        &data[0],
+        data.data(),
         dataSize
     ) };
 }
@@ -1497,8 +1497,8 @@ inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
         nullptr,    // no subkey
         valueName.c_str(),
         flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
+        nullptr,       // type not required
+        result.data(), // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1555,8 +1555,8 @@ inline std::wstring RegKey::GetExpandStringValue(
         nullptr,    // no subkey
         valueName.c_str(),
         flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
+        nullptr,       // type not required
+        result.data(), // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1605,7 +1605,7 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
         valueName.c_str(),
         flags,
         nullptr,    // no type required
-        &data[0],   // output buffer
+        data.data(),   // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1648,6 +1648,14 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
     // Allocate a buffer of proper size to store the binary data
     std::vector<BYTE> data(dataSize);
 
+    // Handle the special case of zero-length binary data:
+    // If the binary data value in the registry is empty, just return
+    if (dataSize == 0)
+    {
+        _ASSERTE(data.empty());
+        return data;
+    }
+
     // Call RegGetValue for the second time to read the data content
     retCode = ::RegGetValueW(
         m_hKey,
@@ -1655,7 +1663,7 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
         valueName.c_str(),
         flags,
         nullptr,    // type not required
-        &data[0],   // output buffer
+        data.data(),   // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1748,11 +1756,11 @@ inline std::optional<std::wstring> RegKey::TryGetStringValue(const std::wstring&
     // Call RegGetValue for the second time to read the string's content
     retCode = ::RegGetValueW(
         m_hKey,
-        nullptr,    // no subkey
+        nullptr,        // no subkey
         valueName.c_str(),
         flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
+        nullptr,        // type not required
+        result.data(),  // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1806,11 +1814,11 @@ inline std::optional<std::wstring> RegKey::TryGetExpandStringValue(
     // Call RegGetValue for the second time to read the string's content
     retCode = ::RegGetValueW(
         m_hKey,
-        nullptr,    // no subkey
+        nullptr,        // no subkey
         valueName.c_str(),
         flags,
-        nullptr,    // type not required
-        &result[0], // output buffer
+        nullptr,        // type not required
+        result.data(),  // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1859,7 +1867,7 @@ inline std::optional<std::vector<std::wstring>>
         valueName.c_str(),
         flags,
         nullptr,    // no type required
-        &data[0],   // output buffer
+        data.data(),   // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
@@ -1903,6 +1911,14 @@ inline std::optional<std::vector<BYTE>>
     // Allocate a buffer of proper size to store the binary data
     std::vector<BYTE> data(dataSize);
 
+    // Handle the special case of zero-length binary data:
+    // If the binary data value in the registry is empty, just return
+    if (dataSize == 0)
+    {
+        _ASSERTE(data.empty());
+        return data;
+    }
+
     // Call RegGetValue for the second time to read the data content
     retCode = ::RegGetValueW(
         m_hKey,
@@ -1910,7 +1926,7 @@ inline std::optional<std::vector<BYTE>>
         valueName.c_str(),
         flags,
         nullptr,    // type not required
-        &data[0],   // output buffer
+        data.data(),   // output buffer
         &dataSize
     );
     if (retCode != ERROR_SUCCESS)
