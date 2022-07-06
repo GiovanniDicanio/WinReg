@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2022, July 1st
+// Last update:   2022, July 6th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -25,9 +25,9 @@
 //
 // In addition, there are also some methods named like TryGet...Value
 // (e.g. TryGetDwordValue), that _try_ to perform the given query,
-// and return a std::optional value.
-// In particular, on failure, the returned std::optional object
-// does not contain any value.
+// and return a RegExpected object. On success, that object contains
+// the value read from the registry. On failure, the returned RegExpected object
+// contains a RegResult storing the return code from the Windows Registry API call.
 //
 // Unicode UTF-16 strings are represented using the std::wstring class;
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
@@ -69,10 +69,10 @@
 #include <crtdbg.h>         // _ASSERTE
 
 #include <memory>           // std::unique_ptr, std::make_unique
-#include <optional>         // std::optional
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair
+#include <variant>          // std::variant
 #include <vector>           // std::vector
 
 
@@ -85,6 +85,9 @@ namespace winreg
 
 class RegException;
 class RegResult;
+
+template <typename T>
+class RegExpected;
 
 
 //
@@ -332,23 +335,23 @@ public:
 
 
     //
-    // Registry Value Getters Returning std::optional
+    // Registry Value Getters Returning RegExpected<T>
     // (instead of throwing RegException on error)
     //
 
-    [[nodiscard]] std::optional<DWORD> TryGetDwordValue(const std::wstring& valueName) const;
-    [[nodiscard]] std::optional<ULONGLONG> TryGetQwordValue(const std::wstring& valueName) const;
-    [[nodiscard]] std::optional<std::wstring> TryGetStringValue(const std::wstring& valueName) const;
+    [[nodiscard]] RegExpected<DWORD> TryGetDwordValue(const std::wstring& valueName) const;
+    [[nodiscard]] RegExpected<ULONGLONG> TryGetQwordValue(const std::wstring& valueName) const;
+    [[nodiscard]] RegExpected<std::wstring> TryGetStringValue(const std::wstring& valueName) const;
 
-    [[nodiscard]] std::optional<std::wstring> TryGetExpandStringValue(
+    [[nodiscard]] RegExpected<std::wstring> TryGetExpandStringValue(
         const std::wstring& valueName,
         ExpandStringOption expandOption = ExpandStringOption::DontExpand
     ) const;
 
-    [[nodiscard]] std::optional<std::vector<std::wstring>>
+    [[nodiscard]] RegExpected<std::vector<std::wstring>>
             TryGetMultiStringValue(const std::wstring& valueName) const;
 
-    [[nodiscard]] std::optional<std::vector<BYTE>>
+    [[nodiscard]] RegExpected<std::vector<BYTE>>
             TryGetBinaryValue(const std::wstring& valueName) const;
 
 
@@ -405,27 +408,27 @@ public:
 
 
     //
-    // Query Operations Returning std::optional
+    // Query Operations Returning RegExpected
     // (instead of throwing RegException on error)
     //
 
     // Retrieve information about the registry key
-    [[nodiscard]] std::optional<InfoKey> TryQueryInfoKey() const;
+    [[nodiscard]] RegExpected<InfoKey> TryQueryInfoKey() const;
 
     // Return the DWORD type ID for the input registry value
-    [[nodiscard]] std::optional<DWORD> TryQueryValueType(const std::wstring& valueName) const;
+    [[nodiscard]] RegExpected<DWORD> TryQueryValueType(const std::wstring& valueName) const;
 
 
     // Determines whether reflection has been disabled or enabled for the specified key
-    [[nodiscard]] std::optional<KeyReflection> TryQueryReflectionKey() const;
+    [[nodiscard]] RegExpected<KeyReflection> TryQueryReflectionKey() const;
 
     // Enumerate the subkeys of the registry key, using RegEnumKeyEx
-    [[nodiscard]] std::optional<std::vector<std::wstring>> TryEnumSubKeys() const;
+    [[nodiscard]] RegExpected<std::vector<std::wstring>> TryEnumSubKeys() const;
 
     // Enumerate the values under the registry key, using RegEnumValue.
     // Returns a vector of pairs: In each pair, the wstring is the value name,
     // the DWORD is the value type.
-    [[nodiscard]] std::optional<std::vector<std::pair<std::wstring, DWORD>>> TryEnumValues() const;
+    [[nodiscard]] RegExpected<std::vector<std::pair<std::wstring, DWORD>>> TryEnumValues() const;
 
 
     //
@@ -513,10 +516,8 @@ public:
     // Initialize to success code (ERROR_SUCCESS)
     RegResult() noexcept = default;
 
-    // Conversion constructor, *not* marked "explicit" on purpose,
-    // allows easy and convenient conversion from Win32 API return code type
-    // to this C++ wrapper.
-    RegResult(LSTATUS result) noexcept;
+    // Initialize with specific Windows Registry API LSTATUS return code
+    explicit RegResult(LSTATUS result) noexcept;
 
     // Is the wrapped code a success code?
     [[nodiscard]] bool IsOk() const noexcept;
@@ -541,6 +542,40 @@ private:
     // Error code returned by Windows Registry C API;
     // default initialized to success code.
     LSTATUS m_result{ ERROR_SUCCESS };
+};
+
+
+//------------------------------------------------------------------------------
+// A class template that stores a value of type T (e.g. DWORD, std::wstring)
+// on success, and a RegResult on error.
+//------------------------------------------------------------------------------
+template <typename T>
+class RegExpected
+{
+public:
+    // Initialize the object with an error code
+    explicit RegExpected(const RegResult& errorCode) noexcept;
+
+    // Initialize the object with a value
+    explicit RegExpected(const T& value);
+
+    // Does this object contain a valid value?
+    [[nodiscard]] explicit operator bool() const noexcept;
+
+    // Does this object contain a valid value?
+    [[nodiscard]] bool IsValid() const noexcept;
+
+    // Access the value (if the object contains a valid value)
+    [[nodiscard]] const T& GetValue() const noexcept;
+
+    // Access the error code (if the object contains an error status)
+    [[nodiscard]] RegResult GetError() const noexcept;
+
+
+private:
+    // Stores a value of type T on success,
+    // or RegResult on error
+    std::variant<RegResult, T> m_var;
 };
 
 
@@ -814,6 +849,17 @@ private:
     return result;
 }
 
+
+//------------------------------------------------------------------------------
+// Builds a RegExpected object that stores an error code
+//------------------------------------------------------------------------------
+template <typename T>
+inline [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode)
+{
+    return RegExpected<T>{ RegResult{ retCode } };
+}
+
+
 } // namespace detail
 
 
@@ -1069,7 +1115,7 @@ inline RegResult RegKey::TryCreate(
 ) noexcept
 {
     HKEY hKey = nullptr;
-    RegResult retCode = ::RegCreateKeyExW(
+    RegResult retCode{ ::RegCreateKeyExW(
         hKeyParent,
         subKey.c_str(),
         0,          // reserved
@@ -1079,7 +1125,7 @@ inline RegResult RegKey::TryCreate(
         securityAttributes,
         &hKey,
         disposition
-    );
+    ) };
     if (retCode.Failed())
     {
         return retCode;
@@ -1103,13 +1149,13 @@ inline RegResult RegKey::TryOpen(
 ) noexcept
 {
     HKEY hKey = nullptr;
-    RegResult retCode = ::RegOpenKeyExW(
+    RegResult retCode{ ::RegOpenKeyExW(
         hKeyParent,
         subKey.c_str(),
         REG_NONE,           // default options
         desiredAccess,
         &hKey
-    );
+    ) };
     if (retCode.Failed())
     {
         return retCode;
@@ -1675,9 +1721,11 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
 }
 
 
-inline std::optional<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName) const
+inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = DWORD;
 
     DWORD data = 0;                  // to be read from the registry
     DWORD dataSize = sizeof(data);   // size of data, in bytes
@@ -1694,16 +1742,18 @@ inline std::optional<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueNa
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    return data;
+    return RegExpected<RegValueType>{ data };
 }
 
 
-inline std::optional<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& valueName) const
+inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = ULONGLONG;
 
     ULONGLONG data = 0;              // to be read from the registry
     DWORD dataSize = sizeof(data);   // size of data, in bytes
@@ -1720,16 +1770,18 @@ inline std::optional<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& val
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    return data;
+    return RegExpected<RegValueType>{ data };
 }
 
 
-inline std::optional<std::wstring> RegKey::TryGetStringValue(const std::wstring& valueName) const
+inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = std::wstring;
 
     // Get the size of the result string
     DWORD dataSize = 0; // size of data, in bytes
@@ -1745,7 +1797,7 @@ inline std::optional<std::wstring> RegKey::TryGetStringValue(const std::wstring&
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Allocate a string of proper size.
@@ -1765,22 +1817,24 @@ inline std::optional<std::wstring> RegKey::TryGetStringValue(const std::wstring&
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
     result.resize((dataSize / sizeof(wchar_t)) - 1);
 
-    return result;
+    return RegExpected<RegValueType>{ result };
 }
 
 
-inline std::optional<std::wstring> RegKey::TryGetExpandStringValue(
+inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
     const std::wstring& valueName,
     const ExpandStringOption expandOption
 ) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = std::wstring;
 
     DWORD flags = RRF_RT_REG_EXPAND_SZ;
 
@@ -1803,7 +1857,7 @@ inline std::optional<std::wstring> RegKey::TryGetExpandStringValue(
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Allocate a string of proper size.
@@ -1823,20 +1877,22 @@ inline std::optional<std::wstring> RegKey::TryGetExpandStringValue(
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
     result.resize((dataSize / sizeof(wchar_t)) - 1);
 
-    return result;
+    return RegExpected<RegValueType>{ result };
 }
 
 
-inline std::optional<std::vector<std::wstring>>
+inline RegExpected<std::vector<std::wstring>>
     RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = std::vector<std::wstring>;
 
     // Request the size of the multi-string, in bytes
     DWORD dataSize = 0;
@@ -1852,7 +1908,7 @@ inline std::optional<std::vector<std::wstring>>
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Allocate room for the result multi-string.
@@ -1872,7 +1928,7 @@ inline std::optional<std::vector<std::wstring>>
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Resize vector to the actual size returned by GetRegValue.
@@ -1882,14 +1938,16 @@ inline std::optional<std::vector<std::wstring>>
 
     // Convert the double-null-terminated string structure to a vector<wstring>,
     // and return that back to the caller
-    return detail::ParseMultiString(data);
+    return RegExpected<RegValueType>{ detail::ParseMultiString(data) };
 }
 
 
-inline std::optional<std::vector<BYTE>>
+inline RegExpected<std::vector<BYTE>>
     RegKey::TryGetBinaryValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using RegValueType = std::vector<BYTE>;
 
     // Get the size of the binary data
     DWORD dataSize = 0; // size of data, in bytes
@@ -1905,7 +1963,7 @@ inline std::optional<std::vector<BYTE>>
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Allocate a buffer of proper size to store the binary data
@@ -1916,7 +1974,7 @@ inline std::optional<std::vector<BYTE>>
     if (dataSize == 0)
     {
         _ASSERTE(data.empty());
-        return data;
+        return RegExpected<RegValueType>{ data };
     }
 
     // Call RegGetValue for the second time to read the data content
@@ -1931,10 +1989,10 @@ inline std::optional<std::vector<BYTE>>
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    return data;
+    return RegExpected<RegValueType>{ data };
 }
 
 
@@ -2092,9 +2150,11 @@ inline std::vector<std::pair<std::wstring, DWORD>> RegKey::EnumValues() const
 }
 
 
-inline std::optional<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
+inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
 {
     _ASSERTE(IsValid());
+
+    using ReturnType = std::vector<std::wstring>;
 
     // Get some useful enumeration info, like the total number of subkeys
     // and the maximum length of the subkey names
@@ -2116,7 +2176,7 @@ inline std::optional<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     // NOTE: According to the MSDN documentation, the size returned for subkey name max length
@@ -2150,7 +2210,7 @@ inline std::optional<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return {};
+            return detail::MakeRegExpectedWithError<ReturnType>(retCode);
         }
 
         // On success, the ::RegEnumKeyEx API writes the length of the
@@ -2160,13 +2220,15 @@ inline std::optional<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         subkeyNames.emplace_back(nameBuffer.get(), subKeyNameLen);
     }
 
-    return subkeyNames;
+    return RegExpected<ReturnType>{ subkeyNames };
 }
 
 
-inline std::optional<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumValues() const
+inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumValues() const
 {
     _ASSERTE(IsValid());
+
+    using ReturnType = std::vector<std::pair<std::wstring, DWORD>>;
 
     // Get useful enumeration info, like the total number of values
     // and the maximum length of the value names
@@ -2188,7 +2250,7 @@ inline std::optional<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnu
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     // NOTE: According to the MSDN documentation, the size returned for value name max length
@@ -2223,7 +2285,7 @@ inline std::optional<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnu
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return {};
+            return detail::MakeRegExpectedWithError<ReturnType>(retCode);
         }
 
         // On success, the RegEnumValue API writes the length of the
@@ -2236,7 +2298,7 @@ inline std::optional<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnu
         );
     }
 
-    return valueInfo;
+    return RegExpected<ReturnType>{ valueInfo };
 }
 
 
@@ -2264,9 +2326,11 @@ inline DWORD RegKey::QueryValueType(const std::wstring& valueName) const
 }
 
 
-inline std::optional<DWORD> RegKey::TryQueryValueType(const std::wstring& valueName) const
+inline RegExpected<DWORD> RegKey::TryQueryValueType(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
+
+    using ReturnType = DWORD;
 
     DWORD typeId = 0;     // will be returned by RegQueryValueEx
 
@@ -2281,10 +2345,10 @@ inline std::optional<DWORD> RegKey::TryQueryValueType(const std::wstring& valueN
 
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
-    return typeId;
+    return RegExpected<ReturnType>{ typeId };
 }
 
 
@@ -2316,9 +2380,11 @@ inline RegKey::InfoKey RegKey::QueryInfoKey() const
 }
 
 
-inline std::optional<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
+inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
 {
     _ASSERTE(IsValid());
+
+    using ReturnType = RegKey::InfoKey;
 
     InfoKey infoKey{};
     LSTATUS retCode = ::RegQueryInfoKeyW(
@@ -2337,10 +2403,10 @@ inline std::optional<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
-    return infoKey;
+    return RegExpected<ReturnType>{ infoKey };
 }
 
 
@@ -2358,18 +2424,20 @@ inline RegKey::KeyReflection RegKey::QueryReflectionKey() const
 }
 
 
-inline std::optional<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
+inline RegExpected<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
 {
+    using ReturnType = RegKey::KeyReflection;
+
     BOOL isReflectionDisabled = FALSE;
     LSTATUS retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
     if (retCode != ERROR_SUCCESS)
     {
-        return {};
+        return detail::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     KeyReflection keyReflection = isReflectionDisabled ? KeyReflection::ReflectionDisabled
                                                        : KeyReflection::ReflectionEnabled;
-    return keyReflection;
+    return RegExpected<ReturnType>{ keyReflection };
 }
 
 
@@ -2685,6 +2753,59 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
     // Safely copy the C-string returned by FormatMessage() into a std::wstring object,
     // and return it back to the caller.
     return std::wstring{ messagePtr.Get() };
+}
+
+
+//------------------------------------------------------------------------------
+//                          RegExpected Inline Methods
+//------------------------------------------------------------------------------
+
+template <typename T>
+inline RegExpected<T>::RegExpected(const RegResult& errorCode) noexcept
+    : m_var{ errorCode }
+{}
+
+
+template <typename T>
+inline RegExpected<T>::RegExpected(const T& value)
+    : m_var{ value }
+{}
+
+
+template <typename T>
+inline RegExpected<T>::operator bool() const noexcept
+{
+    return IsValid();
+}
+
+
+template <typename T>
+inline bool RegExpected<T>::IsValid() const noexcept
+{
+    return std::holds_alternative<T>(m_var);
+}
+
+
+template <typename T>
+inline const T& RegExpected<T>::GetValue() const noexcept
+{
+    // Check that the object stores a valid value
+    _ASSERTE(IsValid());
+
+    // If the object is in a valid state, the variant stores an instance of T
+    return std::get<T>(m_var);
+}
+
+
+template <typename T>
+inline RegResult RegExpected<T>::GetError() const noexcept
+{
+    // Check that the object is in an invalid state
+    _ASSERTE(!IsValid());
+
+    // If the object is in an invalid state, the variant stores a RegResult
+    // that represents an error code from the Windows Registry API
+    return std::get<RegResult>(m_var);
 }
 
 

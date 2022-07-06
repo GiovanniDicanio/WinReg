@@ -1,4 +1,4 @@
-# WinReg v5.1.1
+# WinReg v6.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -36,12 +36,14 @@ header file.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
-The library exposes three main classes:
+The library exposes four main classes:
 
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 * `RegResult`: a tiny wrapper around Windows Registry API `LSTATUS` error codes, 
 returned by some `Try` methods (like `RegKey::TryOpen`)
+* `RegExpected<T>`: an object that contains a value of type `T` (e.g. a `DWORD` read from the registry)
+on success, or an instance of a `RegResult`-wrapped return code on error
 
 There are many member functions inside the `RegKey` class, that wrap many parts of the native 
 C-interface Windows Registry API, in a convenient higher-level C++ way.
@@ -97,20 +99,29 @@ for (const auto & v : values)
 }
 ```
 
-In addition, you can also use the `RegKey::TryGet...Value` methods, that return `std::optional` 
+In addition, you can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
 instead of throwing on errors:
 
 ```c++
-// RegKey::TryGetDwordValue() returns a std::optional<DWORD>;
-// the returned std::optional contains no value on error.
+// RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
+// the returned RegExpected contains a RegResult instance on error.
 
 if (auto dw = key.TryGetDwordValue(L"SomeDwordValue"))
 {
+    //
     // All right: Process the returned value ...
+    //
+    // Use dw.GetValue() to access the stored DWORD.
+    //
 }
 else
 {
-    // The method has failed: The returned std::optional contains no value.   
+    //
+    // The method has failed: 
+    //
+    // The returned RegExpected contains a RegResult with an error code.
+    // Use dw.GetError() to access the RegResult object.
+    //
 }
 ```
 
@@ -118,8 +129,8 @@ Note that many methods are available in _two forms_: one that _throws an excepti
 `RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
 of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
 In addition, as indicated above, some methods like the `RegKey::TryGet...Value` ones return 
-`std::optional` instead of throwing exceptions; in case of errors, the returned `std::optional` 
-_does not contain_ any value.
+`RegExpected` instead of throwing exceptions; in case of errors, the returned `RegExpected` 
+contains a `RegResult` storing the error code.
 
 You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
