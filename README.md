@@ -60,7 +60,7 @@ wstring s  = key.GetStringValue(L"SomeStringValue");
 You can also open a registry key using a two-step construction process:
 
 ```c++
-RegKey key{};
+RegKey key;
 key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 ```
 
@@ -100,18 +100,19 @@ for (const auto & v : values)
 ```
 
 In addition, you can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
-instead of throwing on errors:
+instead of throwing an exception on error:
 
 ```c++
 // RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
 // the returned RegExpected contains a RegResult instance on error.
 
-if (auto dw = key.TryGetDwordValue(L"SomeDwordValue"))
+const auto res = key.TryGetDwordValue(L"SomeDwordValue");
+if (res.IsValid())  // or simply:  if (res)
 {
     //
     // All right: Process the returned value ...
     //
-    // Use dw.GetValue() to access the stored DWORD.
+    // Use res.GetValue() to access the stored DWORD.
     //
 }
 else
@@ -120,7 +121,7 @@ else
     // The method has failed: 
     //
     // The returned RegExpected contains a RegResult with an error code.
-    // Use dw.GetError() to access the RegResult object.
+    // Use res.GetError() to access the RegResult object.
     //
 }
 ```

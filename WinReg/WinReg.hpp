@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2022, July 6th
+// Last update:   2022, July 11th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -547,7 +547,10 @@ private:
 
 //------------------------------------------------------------------------------
 // A class template that stores a value of type T (e.g. DWORD, std::wstring)
-// on success, and a RegResult on error.
+// on success, or a RegResult on error.
+//
+// Used as the return value of some Registry RegKey::TryGetXxxValue() methods
+// as an alternative to exception-throwing methods.
 //------------------------------------------------------------------------------
 template <typename T>
 class RegExpected
@@ -556,7 +559,7 @@ public:
     // Initialize the object with an error code
     explicit RegExpected(const RegResult& errorCode) noexcept;
 
-    // Initialize the object with a value
+    // Initialize the object with a value (the success case)
     explicit RegExpected(const T& value);
 
     // Does this object contain a valid value?
@@ -565,11 +568,13 @@ public:
     // Does this object contain a valid value?
     [[nodiscard]] bool IsValid() const noexcept;
 
-    // Access the value (if the object contains a valid value)
-    [[nodiscard]] const T& GetValue() const noexcept;
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] const T& GetValue() const;
 
     // Access the error code (if the object contains an error status)
-    [[nodiscard]] RegResult GetError() const noexcept;
+    // Throws an exception if the object is in valid state.
+    [[nodiscard]] RegResult GetError() const;
 
 
 private:
@@ -854,7 +859,7 @@ private:
 // Builds a RegExpected object that stores an error code
 //------------------------------------------------------------------------------
 template <typename T>
-inline [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode)
+inline [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(const LSTATUS retCode)
 {
     return RegExpected<T>{ RegResult{ retCode } };
 }
@@ -2787,7 +2792,7 @@ inline bool RegExpected<T>::IsValid() const noexcept
 
 
 template <typename T>
-inline const T& RegExpected<T>::GetValue() const noexcept
+inline const T& RegExpected<T>::GetValue() const
 {
     // Check that the object stores a valid value
     _ASSERTE(IsValid());
@@ -2798,7 +2803,7 @@ inline const T& RegExpected<T>::GetValue() const noexcept
 
 
 template <typename T>
-inline RegResult RegExpected<T>::GetError() const noexcept
+inline RegResult RegExpected<T>::GetError() const
 {
     // Check that the object is in an invalid state
     _ASSERTE(!IsValid());
