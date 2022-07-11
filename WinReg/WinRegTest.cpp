@@ -19,7 +19,6 @@
 #include <vector>
 
 
-using std::optional;
 using std::pair;
 using std::vector;
 using std::wcout;
@@ -27,6 +26,7 @@ using std::wstring;
 
 using winreg::RegKey;
 using winreg::RegException;
+using winreg::RegExpected;
 
 
 //
@@ -129,14 +129,14 @@ void Test()
 
     if (auto testDw2 = key.TryGetDwordValue(L"TestTryValueDword"))
     {
-        if (testDw2 != testDw)
+        if (testDw2.GetValue() != testDw)
         {
             wcout << L"RegKey::TryGetDwordValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetDwordValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetDwordValue failed.\n";
     }
 
     DWORD typeId = key.QueryValueType(L"TestValueDword");
@@ -153,14 +153,14 @@ void Test()
 
     if (auto testQw2 = key.TryGetQwordValue(L"TestTryValueQword"))
     {
-        if (testQw2 != testQw)
+        if (testQw2.GetValue() != testQw)
         {
             wcout << L"RegKey::TryGetQwordValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetQwordValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetQwordValue failed.\n";
     }
 
     typeId = key.QueryValueType(L"TestValueQword");
@@ -177,14 +177,14 @@ void Test()
 
     if (auto testSz2 = key.TryGetStringValue(L"TestTryValueString"))
     {
-        if (testSz2 != testSz)
+        if (testSz2.GetValue() != testSz)
         {
             wcout << L"RegKey::TryGetStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetStringValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetStringValue failed.\n";
     }
 
     typeId = key.QueryValueType(L"TestValueString");
@@ -201,14 +201,14 @@ void Test()
 
     if (auto testExpandSz2 = key.TryGetExpandStringValue(L"TestTryValueExpandString"))
     {
-        if (testExpandSz2 != testExpandSz)
+        if (testExpandSz2.GetValue() != testExpandSz)
         {
             wcout << L"RegKey::TryGetExpandStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetExpandStringValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetExpandStringValue failed.\n";
     }
 
     typeId = key.QueryValueType(L"TestValueExpandString");
@@ -225,14 +225,14 @@ void Test()
 
     if (auto testMultiSz2 = key.TryGetMultiStringValue(L"TestTryValueMultiString"))
     {
-        if (testMultiSz2 != testMultiSz)
+        if (testMultiSz2.GetValue() != testMultiSz)
         {
             wcout << L"RegKey::TryGetMultiStringValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetMultiStringValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetMultiStringValue failed.\n";
     }
 
     typeId = key.QueryValueType(L"TestValueMultiString");
@@ -249,14 +249,14 @@ void Test()
 
     if (auto testBinary2 = key.TryGetBinaryValue(L"TestTryValueBinary"))
     {
-        if (testBinary2 != testBinary)
+        if (testBinary2.GetValue() != testBinary)
         {
             wcout << L"RegKey::TryGetBinaryValue failed.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetBinaryValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetBinaryValue failed.\n";
     }
 
     typeId = key.QueryValueType(L"TestValueBinary");
@@ -274,14 +274,14 @@ void Test()
 
     if (auto testEmptyBinary2 = key.TryGetBinaryValue(L"TestTryEmptyBinary"))
     {
-        if (testEmptyBinary2 != testEmptyBinary)
+        if (testEmptyBinary2.GetValue() != testEmptyBinary)
         {
             wcout << L"RegKey::TryGetBinaryValue failed with zero-length binary data.\n";
         }
     }
     else
     {
-        wcout << L"RegKey::TryGetBinaryValue failed (std::optional has no value).\n";
+        wcout << L"RegKey::TryGetBinaryValue failed.\n";
     }
 
 
