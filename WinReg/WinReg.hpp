@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2022, July 11th
+// Last update:   2022, July 13th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -859,7 +859,7 @@ private:
 // Builds a RegExpected object that stores an error code
 //------------------------------------------------------------------------------
 template <typename T>
-inline [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(const LSTATUS retCode)
+[[nodiscard]] inline RegExpected<T> MakeRegExpectedWithError(const LSTATUS retCode)
 {
     return RegExpected<T>{ RegResult{ retCode } };
 }
