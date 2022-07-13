@@ -1,4 +1,4 @@
-# WinReg v6.0.1
+# WinReg v6.1.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -106,9 +106,13 @@ You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<
 instead of throwing an exception on error:
 
 ```c++
+//
 // RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
-// the returned RegExpected contains a RegResult instance on error.
-
+// the returned RegExpected contains a DWORD on success, 
+// or a RegResult instance on error.
+//
+// 'res' is a RegExpected<DWORD> in this case:
+//
 const auto res = key.TryGetDwordValue(L"SomeDwordValue");
 if (res.IsValid())  // or simply:  if (res)
 {
@@ -129,7 +133,7 @@ else
 }
 ```
 
-**Version Note:** WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
+**Version Note** WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
 `std::optional<T>` (discarding the information about the error code).
 Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
 the error information on failure).

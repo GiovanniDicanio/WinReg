@@ -71,7 +71,7 @@
 #include <memory>           // std::unique_ptr, std::make_unique
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
-#include <utility>          // std::swap, std::pair
+#include <utility>          // std::swap, std::pair, std::move
 #include <variant>          // std::variant
 #include <vector>           // std::vector
 
@@ -561,6 +561,10 @@ public:
 
     // Initialize the object with a value (the success case)
     explicit RegExpected(const T& value);
+
+    // Initialize the object with a value (the success case),
+    // optimized for move semantics
+    explicit RegExpected(T&& value);
 
     // Does this object contain a valid value?
     [[nodiscard]] explicit operator bool() const noexcept;
@@ -2774,6 +2778,12 @@ inline RegExpected<T>::RegExpected(const RegResult& errorCode) noexcept
 template <typename T>
 inline RegExpected<T>::RegExpected(const T& value)
     : m_var{ value }
+{}
+
+
+template <typename T>
+inline RegExpected<T>::RegExpected(T&& value)
+    : m_var{ std::move(value) }
 {}
 
 
