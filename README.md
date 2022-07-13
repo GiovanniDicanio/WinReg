@@ -1,4 +1,4 @@
-# WinReg v6.0.0
+# WinReg v6.0.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -13,7 +13,9 @@ For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminate
 is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ 
 between high-level C++ STL-based stuff and the low-level Win32 C-interface API.
 
-Moreover, Win32 error codes are translated to C++ exceptions.
+Moreover, Win32 error codes are translated to C++ exceptions. 
+However, note that if you [prefer checking return codes](https://blogs.msmvps.com/gdicanio/2022/07/13/exceptions-or-error-return-codes/),
+there are also methods that follow this pattern.
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
@@ -42,10 +44,11 @@ The library exposes four main classes:
 * `RegException`: an exception class to signal error conditions
 * `RegResult`: a tiny wrapper around Windows Registry API `LSTATUS` error codes, 
 returned by some `Try` methods (like `RegKey::TryOpen`)
-* `RegExpected<T>`: an object that contains a value of type `T` (e.g. a `DWORD` read from the registry)
-on success, or an instance of a `RegResult`-wrapped return code on error
+* `RegExpected<T>`: an object that contains a value of type `T` 
+(e.g. a `DWORD` read from the registry) on success, 
+or an instance of a `RegResult`-wrapped return code on error
 
-There are many member functions inside the `RegKey` class, that wrap many parts of the native 
+There are many member functions inside the `RegKey` class, that wrap several parts of the native 
 C-interface Windows Registry API, in a convenient higher-level C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
@@ -65,7 +68,7 @@ key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 ```
 
 The above code will throw an exception on error. If you prefer to check return codes, you can do 
-that as well:
+that as well, using a `TryXxxx` method, e.g.:
 
 ```c++
 RegKey key;
@@ -99,7 +102,7 @@ for (const auto & v : values)
 }
 ```
 
-In addition, you can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
+You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
 instead of throwing an exception on error:
 
 ```c++
@@ -125,6 +128,12 @@ else
     //
 }
 ```
+
+**Version Note** WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
+`std::optional<T>` (discarding the information about the error code).
+Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
+the error information on failure).
+
 
 Note that many methods are available in _two forms_: one that _throws an exception_ of type 
 `RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
