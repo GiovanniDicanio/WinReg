@@ -1,10 +1,6 @@
 # WinReg v6.1.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
-<a href="https://www.patreon.com/bePatron?u=77214834">
-  <img height="40" width="204" src="https://s3-us-west-1.amazonaws.com/widget-images/become-patron-widget-medium%402x.png">
-</a>
-
 by Giovanni Dicanio
 
 The Windows Registry C-interface API is  _very low-level_ and _hard_ to use.
