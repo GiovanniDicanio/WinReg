@@ -36,6 +36,12 @@ The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit b
 This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
 header file.
 
+To use it in a CMake project you can add WinReg as a submodule to your repository. You could then include it in `CMakeLists.txt` as follows (assuming WinReg submodule is located in the project root):
+```cmake
+add_subdirectory(WinReg EXCLUDE_FROM_ALL)
+target_link_libraries(MyProject PUBLIC WinReg)
+```
+
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
 The library exposes four main classes:
