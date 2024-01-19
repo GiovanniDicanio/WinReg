@@ -1,4 +1,4 @@
-# WinReg v6.1.0
+# WinReg v6.1.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -53,7 +53,7 @@ C-interface Windows Registry API, in a convenient higher-level C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
-```c++
+```cpp
 RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey" };
 
 DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
@@ -62,7 +62,7 @@ wstring s  = key.GetStringValue(L"SomeStringValue");
 
 You can also open a registry key using a two-step construction process:
 
-```c++
+```cpp
 RegKey key;
 key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 ```
@@ -70,7 +70,7 @@ key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 The above code will throw an exception on error. If you prefer to check return codes, you can do 
 that as well, using a `TryXxxx` method, e.g.:
 
-```c++
+```cpp
 RegKey key;
 RegResult result = key.TryOpen(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 if (! result)
@@ -87,7 +87,7 @@ if (! result)
 
 You can also enumerate all the values under a given key with simple C++ code like this:
 
-```c++
+```cpp
 auto values = key.EnumValues();
 
 for (const auto & v : values)
@@ -105,7 +105,7 @@ for (const auto & v : values)
 You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
 instead of throwing an exception on error:
 
-```c++
+```cpp
 //
 // RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
 // the returned RegExpected contains a DWORD on success, 
