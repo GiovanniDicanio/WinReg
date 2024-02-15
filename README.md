@@ -1,4 +1,4 @@
-# WinReg v6.1.0
+# WinReg v6.1.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -14,8 +14,9 @@ is handled using a much easier higher-level `vector<wstring>`. My C++ code does 
 between high-level C++ STL-based stuff and the low-level Win32 C-interface API.
 
 Moreover, Win32 error codes are translated to C++ exceptions. 
-However, note that if you [prefer checking return codes](https://blogs.msmvps.com/gdicanio/2022/07/13/exceptions-or-error-return-codes/),
-there are also methods that follow this pattern.
+However, note that if you prefer checking return codes, there are also methods that follow 
+this pattern (e.g. `TryXxxx()` methods like `TryOpen()`, `TryGetDwordValue()`, `TryGetStringValue()`, 
+etc.).
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
