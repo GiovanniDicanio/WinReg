@@ -148,7 +148,7 @@ else
 }
 ```
 
-**Version Note** WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
+**Version Note**: WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
 `std::optional<T>` (discarding the information about the error code).
 Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
 the error information on failure).
