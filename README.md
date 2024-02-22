@@ -103,6 +103,20 @@ for (const auto & v : values)
 }
 ```
 
+You can simplify the above iteration code using C++17 structured bindings, as well:
+
+```c++
+auto values = key.EnumValues();
+
+for (const auto & [valueName, valueType] : values)
+{
+    //
+    // Use valueName and valueType
+    //
+    ...
+}
+```
+
 You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
 instead of throwing an exception on error:
 

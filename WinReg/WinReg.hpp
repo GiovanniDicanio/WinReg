@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, February 21st
+// Last update:   2024, February 22nd
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -1536,9 +1536,11 @@ inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
+    std::wstring result;    // to be read from the registry
+    DWORD dataSize = 0;     // size of the string data, in bytes
+
     constexpr DWORD flags = RRF_RT_REG_SZ;
-    std::wstring result;
-    DWORD dataSize = 0; // size of the string data, in bytes
+
     LSTATUS retCode = ERROR_MORE_DATA;
 
     while (retCode == ERROR_MORE_DATA)
@@ -1594,6 +1596,10 @@ inline std::wstring RegKey::GetExpandStringValue(
 {
     _ASSERTE(IsValid());
 
+    std::wstring result;    // to be read from the registry
+    DWORD dataSize = 0;     // size of the expand string data, in bytes
+
+
     DWORD flags = RRF_RT_REG_EXPAND_SZ;
 
     // Adjust the flag for RegGetValue considering the expand string option specified by the caller
@@ -1602,8 +1608,7 @@ inline std::wstring RegKey::GetExpandStringValue(
         flags |= RRF_NOEXPAND;
     }
 
-    std::wstring result;
-    DWORD dataSize = 0; // size of the expand string data, in bytes
+
     LSTATUS retCode = ERROR_MORE_DATA;
 
     while (retCode == ERROR_MORE_DATA)
@@ -1620,7 +1625,8 @@ inline std::wstring RegKey::GetExpandStringValue(
         );
         if (retCode != ERROR_SUCCESS)
         {
-            throw RegException{ retCode, "Cannot get the size of the expand string value: RegGetValueW failed." };
+            throw RegException{ retCode,
+                                "Cannot get the size of the expand string value: RegGetValueW failed." };
         }
 
         // Allocate a string of proper size.
@@ -1656,13 +1662,13 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
 {
     _ASSERTE(IsValid());
 
-    constexpr DWORD flags = RRF_RT_REG_MULTI_SZ;
-
-    // Room for the result multi-string
-    std::vector<wchar_t> data;
+    // Room for the result multi-string, to be read from the registry
+    std::vector<wchar_t> multiString;
 
     // Size of the multi-string, in bytes
     DWORD dataSize = 0;
+
+    constexpr DWORD flags = RRF_RT_REG_MULTI_SZ;
 
     LSTATUS retCode = ERROR_MORE_DATA;
 
@@ -1687,16 +1693,16 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
         // Allocate room for the result multi-string.
         // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size
         // to be expressed in wchar_ts.
-        data.resize(dataSize / sizeof(wchar_t));
+        multiString.resize(dataSize / sizeof(wchar_t));
 
         // Call RegGetValue for the second time to read the multi-string's content into the vector
         retCode = ::RegGetValueW(
             m_hKey,
-            nullptr,        // no subkey
+            nullptr,                // no subkey
             valueName.c_str(),
             flags,
-            nullptr,        // type not required
-            data.data(),    // output buffer
+            nullptr,                // type not required
+            multiString.data(),     // output buffer
             &dataSize
         );
     }
@@ -1709,11 +1715,11 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
     // Resize vector to the actual size returned by the last call to RegGetValue.
     // Note that the vector is a vector of wchar_ts, instead the size returned by RegGetValue
     // is in bytes, so we have to scale from bytes to wchar_t count.
-    data.resize(dataSize / sizeof(wchar_t));
+    multiString.resize(dataSize / sizeof(wchar_t));
 
     // Convert the double-null-terminated string structure to a vector<wstring>,
     // and return that back to the caller
-    return winreg_internal::ParseMultiString(data);
+    return winreg_internal::ParseMultiString(multiString);
 }
 
 
@@ -1721,12 +1727,13 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
 {
     _ASSERTE(IsValid());
 
+    // Room for the binary data, to be read from the registry
+    std::vector<BYTE> binaryData;
+
+    // Size of binary data, in bytes
+    DWORD dataSize = 0;
+
     constexpr DWORD flags = RRF_RT_REG_BINARY;
-
-    // Room for the binary data
-    std::vector<BYTE> data;
-
-    DWORD dataSize = 0; // size of binary data, in bytes
 
     LSTATUS retCode = ERROR_MORE_DATA;
 
@@ -1749,24 +1756,24 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
         }
 
         // Allocate a buffer of proper size to store the binary data
-        data.resize(dataSize);
+        binaryData.resize(dataSize);
 
         // Handle the special case of zero-length binary data:
-        // If the binary data value in the registry is empty, just return
+        // If the binary data value in the registry is empty, just return an empty vector.
         if (dataSize == 0)
         {
-            _ASSERTE(data.empty());
-            return data;
+            _ASSERTE(binaryData.empty());
+            return binaryData;
         }
 
         // Call RegGetValue for the second time to read the binary data content into the vector
         retCode = ::RegGetValueW(
             m_hKey,
-            nullptr,        // no subkey
+            nullptr,            // no subkey
             valueName.c_str(),
             flags,
-            nullptr,        // type not required
-            data.data(),    // output buffer
+            nullptr,            // type not required
+            binaryData.data(),  // output buffer
             &dataSize
         );
     }
@@ -1777,9 +1784,9 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
     }
 
     // Resize vector to the actual size returned by the last call to RegGetValue
-    data.resize(dataSize);
+    binaryData.resize(dataSize);
 
-    return data;
+    return binaryData;
 }
 
 
