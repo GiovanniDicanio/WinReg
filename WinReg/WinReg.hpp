@@ -5,11 +5,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //      *** Modern C++ Wrappers Around Windows Registry C API ***
+//                   [C++14 Compatible Version]
 //
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, February 22nd
+// Last update:   2024, February 27nd
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -33,7 +34,7 @@
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
 //
 // Compiler: Visual Studio 2019
-// C++ Language Standard: C++17 (/std:c++17)
+// C++ Language Standard: C++14 (VS 2019 default)
 // Code compiles cleanly at warning level 4 (/W4) on both 32-bit and 64-bit builds.
 //
 // Requires building in Unicode mode (which has been the default since VS2005).
@@ -72,7 +73,6 @@
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair, std::move
-#include <variant>          // std::variant
 #include <vector>           // std::vector
 
 
@@ -577,14 +577,16 @@ public:
     [[nodiscard]] const T& GetValue() const;
 
     // Access the error code (if the object contains an error status)
-    // Throws an exception if the object is in valid state.
+    // Can also be called if the object contains a valid value
+    // (in this case, the returned error code is ERROR_SUCCESS).
     [[nodiscard]] RegResult GetError() const;
 
 
 private:
-    // Stores a value of type T on success,
-    // or RegResult on error
-    std::variant<RegResult, T> m_var;
+    RegResult m_result{ ERROR_SUCCESS };
+
+    // Value is valid only if m_result is ERROR_SUCCESS
+    T m_value{};
 };
 
 
@@ -1572,7 +1574,7 @@ inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
             valueName.c_str(),
             flags,
             nullptr,       // type not required
-            result.data(), // output buffer
+            &result[0],    // output buffer
             &dataSize
         );
     }
@@ -1641,7 +1643,7 @@ inline std::wstring RegKey::GetExpandStringValue(
             valueName.c_str(),
             flags,
             nullptr,       // type not required
-            result.data(), // output buffer
+            &result[0],    // output buffer
             &dataSize
         );
     }
@@ -1889,7 +1891,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
             valueName.c_str(),
             flags,
             nullptr,       // type not required
-            result.data(), // output buffer
+            &result[0],    // output buffer
             &dataSize
         );
     }
@@ -1956,7 +1958,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
             valueName.c_str(),
             flags,
             nullptr,       // type not required
-            result.data(), // output buffer
+            &result[0],    // output buffer
             &dataSize
         );
     }
@@ -2874,19 +2876,19 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 
 template <typename T>
 inline RegExpected<T>::RegExpected(const RegResult& errorCode) noexcept
-    : m_var{ errorCode }
+    : m_result{ errorCode }
 {}
 
 
 template <typename T>
 inline RegExpected<T>::RegExpected(const T& value)
-    : m_var{ value }
+    : m_value{ value }
 {}
 
 
 template <typename T>
 inline RegExpected<T>::RegExpected(T&& value)
-    : m_var{ std::move(value) }
+    : m_value{ std::move(value) }
 {}
 
 
@@ -2900,7 +2902,7 @@ inline RegExpected<T>::operator bool() const noexcept
 template <typename T>
 inline bool RegExpected<T>::IsValid() const noexcept
 {
-    return std::holds_alternative<T>(m_var);
+    return m_result.IsOk();
 }
 
 
@@ -2910,20 +2912,21 @@ inline const T& RegExpected<T>::GetValue() const
     // Check that the object stores a valid value
     _ASSERTE(IsValid());
 
-    // If the object is in a valid state, the variant stores an instance of T
-    return std::get<T>(m_var);
+    if (!IsValid())
+    {
+        // TODO: May use another exception?
+        throw std::invalid_argument{ "RegExpected<T>::GetValue() called on an instance in error state." };
+    }
+
+    // If the object is in a valid state, return the value
+    return m_value;
 }
 
 
 template <typename T>
 inline RegResult RegExpected<T>::GetError() const
 {
-    // Check that the object is in an invalid state
-    _ASSERTE(!IsValid());
-
-    // If the object is in an invalid state, the variant stores a RegResult
-    // that represents an error code from the Windows Registry API
-    return std::get<RegResult>(m_var);
+    return m_result;
 }
 
 
