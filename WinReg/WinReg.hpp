@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, February 22nd
+// Last update:   2024, March 5th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -69,11 +69,20 @@
 #include <crtdbg.h>         // _ASSERTE
 
 #include <memory>           // std::unique_ptr, std::make_unique
+#include <stdexcept>        // std::invalid_argument
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair, std::move
-#include <variant>          // std::variant
 #include <vector>           // std::vector
+
+
+//
+// *** Windows XP Compatibility Mode ***
+//
+// Define the following macro to enable code that works with Windows XP,
+// using APIs like RegQueryValueEx instead of the Vista+ RegGetValue.
+//
+//#define GIOVANNI_DICANIO_WINREG_WINDOWS_XP_COMPATIBLE   1
 
 
 namespace winreg
@@ -491,6 +500,64 @@ public:
 private:
     // The wrapped registry key handle
     HKEY m_hKey{ nullptr };
+
+
+    //
+    // Private Helpers
+    //
+
+    //
+    // These GetDword/QWord/String/etc./ValueInternal methods implement the code
+    // that interacts directly with Windows Registry C-interface APIs
+    // to get the desired values from the registry.
+    //
+    // Public methods like GetDword/Qword/String/etc./Value and the corresponding
+    // TryGetXxxxValue methods simply call these "GetXxxxValueInternal" methods.
+    //
+    // Note that in all these GetXxxxValueInternal methods the errorMessage parameter
+    // is an *optional* string. This error message string is used by the public GetXxxxValue
+    // methods that return an exception on error; however, the corresponding TryGetXxxxValue
+    // methods do not use this error message string as they don't throw a RegException on error.
+    // (They could potentially use the error message string to log the error,
+    // but they do not in this current implementation.)
+    //
+
+    [[nodiscard]] LSTATUS GetDwordValueInternal(
+        DWORD& result,                           // [out] to be read from the registry
+        const std::wstring& valueName,           // [in]  name of the DWORD value
+        std::string* errorMessage = nullptr      // [out, opt] a descriptive error message
+    ) const;
+
+    [[nodiscard]] LSTATUS GetQwordValueInternal(
+        ULONGLONG& result,                       // [out] to be read from the registry
+        const std::wstring& valueName,           // [in]  name of the QWORD value
+        std::string* errorMessage = nullptr      // [out, opt] a descriptive error message
+    ) const;
+
+    [[nodiscard]] LSTATUS GetStringValueInternal(
+        std::wstring&       result,                     // [out] to be read from the registry
+        const std::wstring& valueName,                  // [in]  name of the string value
+        std::string*        errorMessage = nullptr      // [out, opt] a descriptive error message
+    ) const;
+
+    [[nodiscard]] LSTATUS GetExpandStringValueInternal(
+        std::wstring& result,                     // [out] to be read from the registry
+        const std::wstring& valueName,            // [in]  name of the expand string value
+        ExpandStringOption  expandOption = ExpandStringOption::Expand, // [in] Expand option
+        std::string* errorMessage = nullptr      // [out, opt] a descriptive error message
+    ) const;
+
+    [[nodiscard]] LSTATUS GetMultiStringValueInternal(
+        std::vector<std::wstring>& result,              // [out] to be read from the registry
+        const std::wstring& valueName,                  // [in]  name of the multi-string value
+        std::string* errorMessage = nullptr             // [out, opt] a descriptive error message
+    ) const;
+
+    [[nodiscard]] LSTATUS RegKey::GetBinaryValueInternal(
+        std::vector<BYTE>& result,                      // [out] to be read from the registry
+        const std::wstring& valueName,                  // [in]  name of the binary value
+        std::string* const errorMessage = nullptr       // [out, opt] a descriptive error message
+    ) const;
 };
 
 
@@ -577,14 +644,16 @@ public:
     [[nodiscard]] const T& GetValue() const;
 
     // Access the error code (if the object contains an error status)
-    // Throws an exception if the object is in valid state.
+    // Can also be called if the object contains a valid value
+    // (in this case, the returned error code is ERROR_SUCCESS).
     [[nodiscard]] RegResult GetError() const;
 
 
 private:
-    // Stores a value of type T on success,
-    // or RegResult on error
-    std::variant<RegResult, T> m_var;
+    RegResult m_result{ ERROR_SUCCESS };
+
+    // Value is valid only if m_result is ERROR_SUCCESS
+    T m_value{};
 };
 
 
@@ -782,6 +851,81 @@ private:
     const size_t lastPosition = data.size() - 1;
     return ((data[lastPosition]     == L'\0')  &&
             (data[lastPosition - 1] == L'\0')) ? true : false;
+}
+
+
+//------------------------------------------------------------------------------
+// Make sure to double-null-terminate the vector.
+// If the vector is *already* double-null-terminated, leave it as is.
+//------------------------------------------------------------------------------
+inline void DoubleNullTerminate(std::vector<wchar_t>& data)
+{
+    // If the vector is *already* double-null-terminated, leave it as is.
+    if (IsDoubleNullTerminated(data))
+    {
+        return;
+    }
+
+
+    // The vector is not double-null-terminated.
+    // We have to add one or two null-terminators.
+
+    // Is the vector empty?
+    if (data.empty())
+    {
+        // Add the double-null terminator
+        data.push_back(L'\0');
+        data.push_back(L'\0');
+
+        _ASSERTE(IsDoubleNullTerminated(data));
+        return;
+    }
+
+    // The vector is not empty.
+    // Start checking the element in the last position.
+    const size_t lastPosition = data.size() - 1;
+    if (data[lastPosition] != L'\0')
+    {
+        // The last element is not a null (L'\0').
+        // Se we need to add *two* null terminators to make the vector double-null-terminated.
+        data.push_back(L'\0');
+        data.push_back(L'\0');
+
+        _ASSERTE(IsDoubleNullTerminated(data));
+        return;
+    }
+
+    // The last element is null.
+    // If that is the *only* element, add another null and we are done.
+    if (data.size() == 1)
+    {
+        data.push_back(L'\0');
+
+        _ASSERTE(IsDoubleNullTerminated(data));
+        return;
+    }
+
+    // Now check the element *before* the last one.
+    // (If we are here, there are at least two elements.)
+    _ASSERTE(data.size() >= 2);
+    if (data[lastPosition - 1] != L'\0')
+    {
+        // The last element is null, but the previous element is *not* null.
+        //
+        // C o n n i e 0
+        //           X *<--- null
+        //           |
+        //           not-null
+        //
+        // So, just add another null at the end of the vector, and we'll make it
+        // double-null terminated.
+        data.push_back(L'\0');
+
+        _ASSERTE(IsDoubleNullTerminated(data));
+        return;
+    }
+
+    _ASSERTE(IsDoubleNullTerminated(data));
 }
 
 
@@ -1484,25 +1628,15 @@ inline DWORD RegKey::GetDwordValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
-    DWORD data = 0;                  // to be read from the registry
-    DWORD dataSize = sizeof(data);   // size of data, in bytes
-
-    constexpr DWORD flags = RRF_RT_REG_DWORD;
-    LSTATUS retCode = ::RegGetValueW(
-        m_hKey,
-        nullptr, // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr, // type not required
-        &data,
-        &dataSize
-    );
+    DWORD result{};    // to be read from the registry
+    std::string errorMessage;
+    LSTATUS retCode = GetDwordValueInternal(result, valueName, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get DWORD value: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
 
-    return data;
+    return result;
 }
 
 
@@ -1510,25 +1644,15 @@ inline ULONGLONG RegKey::GetQwordValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
-    ULONGLONG data = 0;              // to be read from the registry
-    DWORD dataSize = sizeof(data);   // size of data, in bytes
-
-    constexpr DWORD flags = RRF_RT_REG_QWORD;
-    LSTATUS retCode = ::RegGetValueW(
-        m_hKey,
-        nullptr, // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr, // type not required
-        &data,
-        &dataSize
-    );
+    ULONGLONG result{};    // to be read from the registry
+    std::string errorMessage;
+    LSTATUS retCode = GetQwordValueInternal(result, valueName, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get QWORD value: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
 
-    return data;
+    return result;
 }
 
 
@@ -1537,53 +1661,12 @@ inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
     _ASSERTE(IsValid());
 
     std::wstring result;    // to be read from the registry
-    DWORD dataSize = 0;     // size of the string data, in bytes
-
-    constexpr DWORD flags = RRF_RT_REG_SZ;
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Get the size of the result string
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ retCode, "Cannot get the size of the string value: RegGetValueW failed." };
-        }
-
-        // Allocate a string of proper size.
-        // Note that dataSize is in bytes and includes the terminating NUL;
-        // we have to convert the size from bytes to wchar_ts for wstring::resize.
-        result.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the string's content
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,       // type not required
-            result.data(), // output buffer
-            &dataSize
-        );
-    }
-
+    std::string errorMessage;
+    LSTATUS retCode = GetStringValueInternal(result, valueName, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get the string value: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return result;
 }
@@ -1597,62 +1680,12 @@ inline std::wstring RegKey::GetExpandStringValue(
     _ASSERTE(IsValid());
 
     std::wstring result;    // to be read from the registry
-    DWORD dataSize = 0;     // size of the expand string data, in bytes
-
-
-    DWORD flags = RRF_RT_REG_EXPAND_SZ;
-
-    // Adjust the flag for RegGetValue considering the expand string option specified by the caller
-    if (expandOption == ExpandStringOption::DontExpand)
-    {
-        flags |= RRF_NOEXPAND;
-    }
-
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Get the size of the result string
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ retCode,
-                                "Cannot get the size of the expand string value: RegGetValueW failed." };
-        }
-
-        // Allocate a string of proper size.
-        // Note that dataSize is in bytes and includes the terminating NUL;
-        // we have to convert the size from bytes to wchar_ts for wstring::resize.
-        result.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the string's content
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,       // type not required
-            result.data(), // output buffer
-            &dataSize
-        );
-    }
-
+    std::string errorMessage;
+    LSTATUS retCode = GetExpandStringValueInternal(result, valueName, expandOption, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get the expand string value: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return result;
 }
@@ -1662,64 +1695,15 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
 {
     _ASSERTE(IsValid());
 
-    // Room for the result multi-string, to be read from the registry
-    std::vector<wchar_t> multiString;
-
-    // Size of the multi-string, in bytes
-    DWORD dataSize = 0;
-
-    constexpr DWORD flags = RRF_RT_REG_MULTI_SZ;
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Request the size of the multi-string, in bytes
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ retCode,
-                                "Cannot get the size of the multi-string value: RegGetValueW failed." };
-        }
-
-        // Allocate room for the result multi-string.
-        // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size
-        // to be expressed in wchar_ts.
-        multiString.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the multi-string's content into the vector
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,                // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,                // type not required
-            multiString.data(),     // output buffer
-            &dataSize
-        );
-    }
-
+    std::vector<std::wstring> result;    // to be read from the registry
+    std::string errorMessage;
+    LSTATUS retCode = GetMultiStringValueInternal(result, valueName, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get the multi-string value: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
 
-    // Resize vector to the actual size returned by the last call to RegGetValue.
-    // Note that the vector is a vector of wchar_ts, instead the size returned by RegGetValue
-    // is in bytes, so we have to scale from bytes to wchar_t count.
-    multiString.resize(dataSize / sizeof(wchar_t));
-
-    // Convert the double-null-terminated string structure to a vector<wstring>,
-    // and return that back to the caller
-    return winreg_internal::ParseMultiString(multiString);
+    return result;
 }
 
 
@@ -1727,66 +1711,15 @@ inline std::vector<BYTE> RegKey::GetBinaryValue(const std::wstring& valueName) c
 {
     _ASSERTE(IsValid());
 
-    // Room for the binary data, to be read from the registry
-    std::vector<BYTE> binaryData;
-
-    // Size of binary data, in bytes
-    DWORD dataSize = 0;
-
-    constexpr DWORD flags = RRF_RT_REG_BINARY;
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Request the size of the binary data, in bytes
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            throw RegException{ retCode,
-                                "Cannot get the size of the binary data: RegGetValueW failed." };
-        }
-
-        // Allocate a buffer of proper size to store the binary data
-        binaryData.resize(dataSize);
-
-        // Handle the special case of zero-length binary data:
-        // If the binary data value in the registry is empty, just return an empty vector.
-        if (dataSize == 0)
-        {
-            _ASSERTE(binaryData.empty());
-            return binaryData;
-        }
-
-        // Call RegGetValue for the second time to read the binary data content into the vector
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,            // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,            // type not required
-            binaryData.data(),  // output buffer
-            &dataSize
-        );
-    }
-
+    std::vector<BYTE> result;    // to be read from the registry
+    std::string errorMessage;
+    LSTATUS retCode = GetBinaryValueInternal(result, valueName, &errorMessage);
     if (retCode != ERROR_SUCCESS)
     {
-        throw RegException{ retCode, "Cannot get the binary data: RegGetValueW failed." };
+        throw RegException{ retCode, errorMessage };
     }
 
-    // Resize vector to the actual size returned by the last call to RegGetValue
-    binaryData.resize(dataSize);
-
-    return binaryData;
+    return result;
 }
 
 
@@ -1796,25 +1729,14 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
 
     using RegValueType = DWORD;
 
-    DWORD data = 0;                  // to be read from the registry
-    DWORD dataSize = sizeof(data);   // size of data, in bytes
-
-    constexpr DWORD flags = RRF_RT_REG_DWORD;
-    LSTATUS retCode = ::RegGetValueW(
-        m_hKey,
-        nullptr, // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr, // type not required
-        &data,
-        &dataSize
-    );
+    DWORD result = 0;    // to be read from the registry
+    LSTATUS retCode = GetDwordValueInternal(result, valueName);
     if (retCode != ERROR_SUCCESS)
     {
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>{ result };
 }
 
 
@@ -1824,25 +1746,14 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
 
     using RegValueType = ULONGLONG;
 
-    ULONGLONG data = 0;              // to be read from the registry
-    DWORD dataSize = sizeof(data);   // size of data, in bytes
-
-    constexpr DWORD flags = RRF_RT_REG_QWORD;
-    LSTATUS retCode = ::RegGetValueW(
-        m_hKey,
-        nullptr, // no subkey
-        valueName.c_str(),
-        flags,
-        nullptr, // type not required
-        &data,
-        &dataSize
-    );
+    ULONGLONG result = 0;    // to be read from the registry
+    LSTATUS retCode = GetQwordValueInternal(result, valueName);
     if (retCode != ERROR_SUCCESS)
     {
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>{ result };
 }
 
 
@@ -1852,55 +1763,12 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
 
     using RegValueType = std::wstring;
 
-    constexpr DWORD flags = RRF_RT_REG_SZ;
-
-    std::wstring result;
-
-    DWORD dataSize = 0; // size of the string data, in bytes
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Get the size of the result string
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
-        }
-
-        // Allocate a string of proper size.
-        // Note that dataSize is in bytes and includes the terminating NUL;
-        // we have to convert the size from bytes to wchar_ts for wstring::resize.
-        result.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the string's content
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,       // type not required
-            result.data(), // output buffer
-            &dataSize
-        );
-    }
-
+    std::wstring result;    // to be read from the registry
+    LSTATUS retCode = GetStringValueInternal(result, valueName);
     if (retCode != ERROR_SUCCESS)
     {
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return RegExpected<RegValueType>{ result };
 }
@@ -1915,59 +1783,12 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
 
     using RegValueType = std::wstring;
 
-    DWORD flags = RRF_RT_REG_EXPAND_SZ;
-
-    // Adjust the flag for RegGetValue considering the expand string option specified by the caller
-    if (expandOption == ExpandStringOption::DontExpand)
-    {
-        flags |= RRF_NOEXPAND;
-    }
-
-    std::wstring result;
-    DWORD dataSize = 0; // size of the expand string data, in bytes
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Get the size of the result string
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
-        }
-
-        // Allocate a string of proper size.
-        // Note that dataSize is in bytes and includes the terminating NUL;
-        // we have to convert the size from bytes to wchar_ts for wstring::resize.
-        result.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the string's content
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,       // type not required
-            result.data(), // output buffer
-            &dataSize
-        );
-    }
-
+    std::wstring result;    // to be read from the registry
+    LSTATUS retCode = GetExpandStringValueInternal(result, valueName, expandOption);
     if (retCode != ERROR_SUCCESS)
     {
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
-
-    // Remove the NUL terminator scribbled by RegGetValue from the wstring
-    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return RegExpected<RegValueType>{ result };
 }
@@ -1980,131 +1801,32 @@ inline RegExpected<std::vector<std::wstring>>
 
     using RegValueType = std::vector<std::wstring>;
 
-    constexpr DWORD flags = RRF_RT_REG_MULTI_SZ;
-
-    // Room for the result multi-string
-    std::vector<wchar_t> data;
-
-    // Size of the multi-string, in bytes
-    DWORD dataSize = 0;
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Request the size of the multi-string, in bytes
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
-        }
-
-        // Allocate room for the result multi-string.
-        // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size
-        // to be expressed in wchar_ts.
-        data.resize(dataSize / sizeof(wchar_t));
-
-        // Call RegGetValue for the second time to read the multi-string's content into the vector
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,        // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,        // type not required
-            data.data(),    // output buffer
-            &dataSize
-        );
-    }
-
+    std::vector<std::wstring> result;    // to be read from the registry
+    LSTATUS retCode = GetMultiStringValueInternal(result, valueName);
     if (retCode != ERROR_SUCCESS)
     {
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    // Resize vector to the actual size returned by the last call to RegGetValue.
-    // Note that the vector is a vector of wchar_ts, instead the size returned by RegGetValue
-    // is in bytes, so we have to scale from bytes to wchar_t count.
-    data.resize(dataSize / sizeof(wchar_t));
-
-    // Convert the double-null-terminated string structure to a vector<wstring>,
-    // and return that back to the caller
-    return RegExpected<RegValueType>{ winreg_internal::ParseMultiString(data) };
+    return RegExpected<RegValueType>{ result };
 }
 
 
 inline RegExpected<std::vector<BYTE>>
-    RegKey::TryGetBinaryValue(const std::wstring& valueName) const
+RegKey::TryGetBinaryValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
     using RegValueType = std::vector<BYTE>;
 
-    constexpr DWORD flags = RRF_RT_REG_BINARY;
-
-    // Room for the binary data
-    std::vector<BYTE> data;
-
-    DWORD dataSize = 0; // size of binary data, in bytes
-
-    LSTATUS retCode = ERROR_MORE_DATA;
-
-    while (retCode == ERROR_MORE_DATA)
-    {
-        // Request the size of the binary data, in bytes
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,    // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,    // type not required
-            nullptr,    // output buffer not needed now
-            &dataSize
-        );
-        if (retCode != ERROR_SUCCESS)
-        {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
-        }
-
-        // Allocate a buffer of proper size to store the binary data
-        data.resize(dataSize);
-
-        // Handle the special case of zero-length binary data:
-        // If the binary data value in the registry is empty, just return
-        if (dataSize == 0)
-        {
-            _ASSERTE(data.empty());
-            return RegExpected<RegValueType>{ data };
-        }
-
-        // Call RegGetValue for the second time to read the binary data content into the vector
-        retCode = ::RegGetValueW(
-            m_hKey,
-            nullptr,        // no subkey
-            valueName.c_str(),
-            flags,
-            nullptr,        // type not required
-            data.data(),    // output buffer
-            &dataSize
-        );
-    }
-
+    std::vector<BYTE> result;    // to be read from the registry
+    LSTATUS retCode = GetBinaryValueInternal(result, valueName);
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        throw winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    // Resize vector to the actual size returned by the last call to RegGetValue
-    data.resize(dataSize);
-
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>{ result };
 }
 
 
@@ -2789,6 +2511,1068 @@ inline std::wstring RegKey::RegTypeToString(const DWORD regType)
 
 
 //------------------------------------------------------------------------------
+//              Internal RegKey Helper Methods Implementation
+//------------------------------------------------------------------------------
+
+
+#if defined(GIOVANNI_DICANIO_WINREG_WINDOWS_XP_COMPATIBLE)
+
+
+namespace winreg_internal
+{
+
+//
+// In the version of the code that uses Vista+ RegGetValue (and as such is not compatible
+// with Windows XP), I don't need to manually expand environment strings read from the registry,
+// as RegGetValue automatically expands them, unless the RRF_NOEXPAND flag is passed.
+// So, the following custom winreg_internal::ExpandEnvironmentStrings helper function is only needed
+// in the Windows XP compatible build.
+//
+
+//------------------------------------------------------------------------------
+// Expands environment-variable strings and replaces them with the values
+// defined for the current user.
+// Basically, wraps the ::ExpandEnvironmentStrings API.
+//------------------------------------------------------------------------------
+[[nodiscard]] inline std::wstring ExpandEnvironmentStrings(const std::wstring& source)
+{
+    DWORD retCode = 0;
+    DWORD bufferLength = MAX_PATH; // An arbitrary initial length that might be reasonable
+    std::unique_ptr<wchar_t[]> buffer;
+
+    do {
+        buffer = std::make_unique<wchar_t[]>(bufferLength);
+
+        retCode = ::ExpandEnvironmentStringsW(source.c_str(), buffer.get(), bufferLength);
+        if (retCode == 0)
+        {
+            DWORD errorCode = ::GetLastError();
+            throw RegException{
+                static_cast<LSTATUS>(errorCode),
+                "Cannot expand environment strings: ExpandEnvironmentStringsW failed."
+            };
+        }
+
+        // If ExpandEnvironmentStrings needs a destination buffer of larger size,
+        // this larger size value is returned.
+        if (retCode > bufferLength)
+        {
+            bufferLength = retCode;
+        }
+
+    } while (retCode > bufferLength);
+
+    // 'result' includes the terminating NUL, so we have to remove it to build a wstring object;
+    // this is why I used (retCode - 1)
+    return std::wstring(buffer.get(), retCode - 1);
+}
+
+} // namespace winreg_internal
+
+
+//------------------------------------------------------------------------
+// Code that uses the RegQueryValueEx Registry API instead of RegGetValue,
+// and as such is compatible with Windows XP.
+//------------------------------------------------------------------------
+
+inline LSTATUS RegKey::GetDwordValueInternal(
+    DWORD& result,
+    const std::wstring& valueName,
+    std::string* errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result = 0;
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    DWORD data = 0;                  // to be read from the registry
+    DWORD dataSize = sizeof(data);   // size of data, in bytes
+    DWORD valueType = 0;
+
+    LSTATUS retCode = ::RegQueryValueExW(
+        m_hKey,
+        valueName.c_str(),
+        nullptr,        // reserved
+        &valueType,
+        reinterpret_cast<BYTE*>(&data),
+        &dataSize
+    );
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get DWORD value: RegQueryValueExW failed.";
+        }
+
+        return retCode;
+    }
+
+    if (valueType != REG_DWORD)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get DWORD value: type is not REG_DWORD.";
+        }
+
+        return ERROR_INVALID_DATATYPE;
+    }
+
+    result = data;
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetQwordValueInternal(
+    ULONGLONG& result,
+    const std::wstring& valueName,
+    std::string* errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result = 0;
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    ULONGLONG data = 0;              // to be read from the registry
+    DWORD dataSize = sizeof(data);   // size of data, in bytes
+    DWORD valueType = 0;
+
+    LSTATUS retCode = ::RegQueryValueExW(
+        m_hKey,
+        valueName.c_str(),
+        nullptr,        // reserved
+        &valueType,
+        reinterpret_cast<BYTE*>(&data),
+        &dataSize
+    );
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get QWORD value: RegQueryValueExW failed.";
+        }
+
+        return retCode;
+    }
+
+    if (valueType != REG_QWORD)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get QWORD value: type is not REG_QWORD.";
+        }
+
+        return ERROR_INVALID_DATATYPE;
+    }
+
+    result = data;
+    return ERROR_SUCCESS;
+}
+
+
+namespace winreg_internal
+{
+
+inline LSTATUS GetStringOrExpandStringValueWinXPCompatible(
+    HKEY         const  hKey,               // [in]  Registry key to operate on
+    std::wstring&       result,             // [out] String or expand string read from the registry
+    const std::wstring& valueName,          // [in]  Name of the string value to be read
+    DWORD        const  desiredValueType,   // [in]  REG_SZ or REG_EXPAND_SZ
+    std::string* const  errorMessage        // [out, optional] Descriptive error message on failure
+)
+{
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    _ASSERTE((desiredValueType == REG_SZ) || (desiredValueType == REG_EXPAND_SZ));
+
+    std::wstring stringData;    // to be read from the registry
+    DWORD dataSize = 0;         // size of the string data, in bytes
+    DWORD valueType = 0;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Get the size of the result string
+        retCode = ::RegQueryValueExW(
+            hKey,
+            valueName.c_str(),
+            nullptr,            // reserved
+            &valueType,
+            nullptr,            // output buffer not needed now
+            &dataSize
+        );
+
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = desiredValueType == REG_SZ ?
+                    "Cannot get the size of the string value: RegQueryValueExW failed." :
+                    "Cannot get the size of the expand string value: RegQueryValueExW failed.";
+            }
+
+            return retCode;
+        }
+
+        if (valueType != desiredValueType)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = desiredValueType == REG_SZ ?
+                    "Cannot get string value: type is not REG_SZ." :
+"Cannot get expand string value: type is not REG_EXPAND_SZ.";
+            }
+
+            return ERROR_INVALID_DATATYPE;
+        }
+
+        if (dataSize == 0)
+        {
+            // return std::wstring{};
+            _ASSERTE(result.empty());
+            return ERROR_SUCCESS;
+        }
+
+        // Make room for the NUL terminator, in case it's not written by RegQueryValueEx.
+        // The MSDN documentation warns about RegQueryValueEx not always returning
+        // NUL-terminated strings.
+        dataSize += sizeof(wchar_t);
+
+        // Allocate a string of proper size.
+        // Note that dataSize is in bytes and includes the terminating NUL;
+        // we have to convert the size from bytes to wchar_ts for wstring::resize.
+        stringData.resize(dataSize / sizeof(wchar_t));
+
+        // Call RegQueryValueEx for the second time to read the string's content
+        retCode = ::RegQueryValueExW(
+            hKey,
+            valueName.c_str(),
+            nullptr,                                     // reserved
+            nullptr,                                     // type not needed
+            reinterpret_cast<BYTE*>(stringData.data()),  // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = desiredValueType == REG_SZ ?
+                "Cannot get the string value: RegQueryValueExW failed." :
+                "Cannot get the expand string value: RegQueryValueExW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Resize the string to the actual characters written by RegQueryValueEx.
+    // Note that dataSize is in bytes and may include the terminating NUL;
+    // we have to convert the size from bytes to wchar_ts for wstring::resize.
+    const DWORD wcharsWritten = dataSize / sizeof(wchar_t);
+    stringData.resize(wcharsWritten);
+
+    // Special case of empty string
+    if (wcharsWritten == 0)
+    {
+        _ASSERTE(result.empty());
+        return ERROR_SUCCESS;
+    }
+
+
+    //
+    // Remove the NUL terminator scribbled by RegQueryValueEx from the wstring, *if* present
+    //
+    //
+    // Case #1: RegQueryValueEx writes the \0:
+    //
+    // H e l l o \0  <--- \0 written by RegQueryValueEx
+    // 0 1 2 3 4 5
+    //
+    // wcharsWritten = 6
+    //
+    // data[ wcharsWritten - 1 ] == '\0'  <-- we need to chop this \0 off
+    //
+    // We need to chop off the \0, as wstring objects *already* have their own \0.
+    //
+    //
+    // Case #2: RegQueryValueEx does *not* write the \0:
+    //
+    // If RegQueryValueEx did *not* write a terminating NUL
+    // (which is a possibility, according to the MSDN doc of RegQueryValueEx):
+    //
+    //      result[ wcharsWritten - 1 ] != '\0'
+    //
+    // In this case we don't have to remove any terminating '\0'
+    // (wstring's internal '\0' will be fine).
+    //
+
+    if (stringData[wcharsWritten - 1] == L'\0')
+    {
+        // Chop off the null
+        stringData.resize(wcharsWritten - 1);
+    }
+
+    // result <= stringData
+    std::swap(result, stringData);
+    return ERROR_SUCCESS;
+}
+
+} // namespace winreg_internal
+
+
+inline LSTATUS RegKey::GetStringValueInternal(
+    std::wstring&       result,
+    const std::wstring& valueName,
+    std::string* const  errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    return winreg_internal::GetStringOrExpandStringValueWinXPCompatible(
+        m_hKey,
+        result,
+        valueName,
+        REG_SZ,
+        errorMessage
+    );
+}
+
+
+inline LSTATUS RegKey::GetExpandStringValueInternal(
+    std::wstring&               result,
+    const std::wstring&         valueName,
+    ExpandStringOption const    expandOption,
+    std::string*       const    errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    std::wstring stringMayNeedExpansion;
+    LSTATUS retCode = winreg_internal::GetStringOrExpandStringValueWinXPCompatible(
+        m_hKey,
+        stringMayNeedExpansion,
+        valueName,
+        REG_EXPAND_SZ,
+        errorMessage
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        return retCode;
+    }
+
+    // Expand the environment strings if required by the caller
+    if (expandOption == ExpandStringOption::Expand)
+    {
+        result = winreg_internal::ExpandEnvironmentStrings(stringMayNeedExpansion);
+    }
+    else
+    {
+        // Environment string expansion not required by the caller
+        result = stringMayNeedExpansion;
+    }
+
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetMultiStringValueInternal(
+    std::vector<std::wstring>& result,
+    const std::wstring& valueName,
+    std::string* const errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    // Room for the result multi-string, to be read from the registry
+    std::vector<wchar_t> multiString;
+
+    // Size of the multi-string, in bytes
+    DWORD dataSize = 0;
+
+    DWORD valueType = 0;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Request the size of the multi-string, in bytes
+        retCode = ::RegQueryValueExW(
+            m_hKey,
+            valueName.c_str(),
+            nullptr,            // reserved
+            &valueType,
+            nullptr,            // output buffer not needed now
+            &dataSize
+        );
+
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the multi-string value: RegQueryValueExW failed.";
+            }
+
+            return retCode;
+        }
+
+        if (valueType != REG_MULTI_SZ)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the multi-string string value : type is not REG_MULTI_SZ.";
+            }
+
+            return ERROR_INVALID_DATATYPE;
+        }
+
+        if (dataSize == 0)
+        {
+            result.clear();
+            return ERROR_SUCCESS;
+        }
+
+        // Make room for two NUL terminators, in case they are not written by RegQueryValueEx.
+        // The MSDN documentation warns about RegQueryValueEx not always returning
+        // double-NUL-terminated strings.
+        dataSize += (2 * sizeof(wchar_t));
+
+        // Allocate room for the result multi-string.
+        // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size
+        // to be expressed in wchar_ts.
+        multiString.resize(dataSize / sizeof(wchar_t));
+
+        // Call RegQueryValueEx for the second time to read the multi-string's content into the vector
+        retCode = ::RegQueryValueExW(
+            m_hKey,
+            valueName.c_str(),
+            nullptr,                                      // reserved
+            nullptr,                                      // type not needed
+            reinterpret_cast<BYTE*>(multiString.data()),  // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get the multi-string value: RegQueryValueExW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Resize vector to the actual size returned by the last call to RegQueryValueEx.
+    // Note that the vector is a vector of wchar_ts, instead the size returned by RegQueryValueEx
+    // is in bytes, so we have to scale from bytes to wchar_t count.
+    multiString.resize(dataSize / sizeof(wchar_t));
+
+    // Make sure that the vector is double-NUL-terminated.
+    winreg_internal::DoubleNullTerminate(multiString);
+
+    // Convert the double-null-terminated string structure to a vector<wstring>,
+    // and return that back to the caller
+    result = winreg_internal::ParseMultiString(multiString);
+
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetBinaryValueInternal(
+    std::vector<BYTE>& result,
+    const std::wstring& valueName,
+    std::string* const errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    // Room for the binary data, to be read from the registry
+    std::vector<BYTE> binaryData;
+
+    // Size of binary data, in bytes
+    DWORD dataSize = 0;
+
+    DWORD valueType = 0;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Request the size of the binary data, in bytes
+        retCode = ::RegQueryValueExW(
+            m_hKey,
+            valueName.c_str(),
+            nullptr,            // reserved
+            &valueType,
+            nullptr,            // output buffer not needed now
+            &dataSize
+        );
+
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the binary data: RegQueryValueExW failed.";
+            }
+
+            return retCode;
+        }
+
+        if (valueType != REG_BINARY)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the binary data: type is not REG_BINARY.";
+            }
+
+            return ERROR_INVALID_DATATYPE;
+        }
+
+        if (dataSize == 0)
+        {
+            result.clear();
+            return ERROR_SUCCESS;
+        }
+
+        // Allocate a buffer of proper size to store the binary data
+        binaryData.resize(dataSize);
+
+        // Call RegQueryValueEx for the second time to read the binary data content into the vector
+        retCode = ::RegQueryValueExW(
+            m_hKey,
+            valueName.c_str(),
+            nullptr,               // reserved
+            nullptr,               // type not needed
+            binaryData.data(),     // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get binary data: RegQueryValueExW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Resize vector to the actual size returned by the last call to RegQueryValueEx
+    binaryData.resize(dataSize);
+
+    // result <= binaryData
+    std::swap(result, binaryData);
+
+    return ERROR_SUCCESS;
+}
+
+#else
+
+
+//------------------------------------------------------------------------
+// Code that uses the RegGetValue Registry API available in Vista+,
+// and as such is *not* compatible with Windows XP.
+//------------------------------------------------------------------------
+
+inline LSTATUS RegKey::GetDwordValueInternal(
+    DWORD& result,
+    const std::wstring& valueName,
+    std::string* errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result = 0;
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    DWORD data = 0;                  // to be read from the registry
+    DWORD dataSize = sizeof(data);   // size of data, in bytes
+
+    constexpr DWORD flags = RRF_RT_REG_DWORD;
+    LSTATUS retCode = ::RegGetValueW(
+        m_hKey,
+        nullptr, // no subkey
+        valueName.c_str(),
+        flags,
+        nullptr, // type not required
+        &data,
+        &dataSize
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        // throw RegException{ retCode, "Cannot get DWORD value: RegGetValueW failed." };
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get DWORD value: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    result = data;
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetQwordValueInternal(
+    ULONGLONG& result,
+    const std::wstring& valueName,
+    std::string* errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result = 0;
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+    ULONGLONG data = 0;              // to be read from the registry
+    DWORD dataSize = sizeof(data);   // size of data, in bytes
+
+    constexpr DWORD flags = RRF_RT_REG_QWORD;
+    LSTATUS retCode = ::RegGetValueW(
+        m_hKey,
+        nullptr, // no subkey
+        valueName.c_str(),
+        flags,
+        nullptr, // type not required
+        &data,
+        &dataSize
+    );
+    if (retCode != ERROR_SUCCESS)
+    {
+        // throw RegException{ retCode, "Cannot get QWORD value: RegGetValueW failed." };
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get QWORD value: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    result = data;
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetStringValueInternal(
+    std::wstring&       result,
+    const std::wstring& valueName,
+    std::string* const  errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    std::wstring stringData;    // to be read from the registry
+    DWORD dataSize = 0;         // size of the string data, in bytes
+
+    constexpr DWORD flags = RRF_RT_REG_SZ;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Get the size of the result string
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,    // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,    // type not required
+            nullptr,    // output buffer not needed now
+            &dataSize
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            // throw RegException{ retCode, "Cannot get the size of the string value: RegGetValueW failed." };
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the string value: RegGetValueW failed.";
+            }
+
+            return retCode;
+        }
+
+        // Allocate a string of proper size.
+        // Note that dataSize is in bytes and includes the terminating NUL;
+        // we have to convert the size from bytes to wchar_ts for wstring::resize.
+        stringData.resize(dataSize / sizeof(wchar_t));
+
+        // Call RegGetValue for the second time to read the string's content
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,            // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,            // type not required
+            stringData.data(),  // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        // throw RegException{ retCode, "Cannot get the string value: RegGetValueW failed." };
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get the string value: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    stringData.resize((dataSize / sizeof(wchar_t)) - 1);
+
+
+    // result <= stringData
+    std::swap(result, stringData);
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetExpandStringValueInternal(
+    std::wstring& result,
+    const std::wstring& valueName,
+    ExpandStringOption expandOption,
+    std::string* const  errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    std::wstring stringData;    // to be read from the registry
+    DWORD dataSize = 0;         // size of the string data, in bytes
+
+    const DWORD flags = [expandOption]() {
+        DWORD flags = RRF_RT_REG_EXPAND_SZ;
+
+        // Adjust the flag for RegGetValue considering the expand string option specified by the caller
+        if (expandOption == ExpandStringOption::DontExpand)
+        {
+            flags |= RRF_NOEXPAND;
+        }
+
+        return flags;
+    }();
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Get the size of the result string
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,    // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,    // type not required
+            nullptr,    // output buffer not needed now
+            &dataSize
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the expand string value: RegGetValueW failed.";
+            }
+
+            return retCode;
+        }
+
+        // Allocate a string of proper size.
+        // Note that dataSize is in bytes and includes the terminating NUL;
+        // we have to convert the size from bytes to wchar_ts for wstring::resize.
+        stringData.resize(dataSize / sizeof(wchar_t));
+
+        // Call RegGetValue for the second time to read the string's content
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,            // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,            // type not required
+            stringData.data(),  // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get the expand string value: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    stringData.resize((dataSize / sizeof(wchar_t)) - 1);
+
+
+    // result <= stringData
+    std::swap(result, stringData);
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetMultiStringValueInternal(
+    std::vector<std::wstring>& result,
+    const std::wstring& valueName,
+    std::string* const errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    // Room for the result multi-string, to be read from the registry
+    std::vector<wchar_t> multiString;
+
+    // Size of the multi-string, in bytes
+    DWORD dataSize = 0;
+
+    constexpr DWORD flags = RRF_RT_REG_MULTI_SZ;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Request the size of the multi-string, in bytes
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,    // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,    // type not required
+            nullptr,    // output buffer not needed now
+            &dataSize
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the multi-string value: RegGetValueW failed.";
+            }
+
+            return retCode;
+        }
+
+        // Allocate room for the result multi-string.
+        // Note that dataSize is in bytes, but our vector<wchar_t>::resize method requires size
+        // to be expressed in wchar_ts.
+        multiString.resize(dataSize / sizeof(wchar_t));
+
+        // Call RegGetValue for the second time to read the multi-string's content into the vector
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,                // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,                // type not required
+            multiString.data(),     // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get the size of the multi-string value: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Resize vector to the actual size returned by the last call to RegGetValue.
+    // Note that the vector is a vector of wchar_ts, instead the size returned by RegGetValue
+    // is in bytes, so we have to scale from bytes to wchar_t count.
+    multiString.resize(dataSize / sizeof(wchar_t));
+
+    // Convert the double-null-terminated string structure to a vector<wstring>,
+    // and return that back to the caller
+    result = winreg_internal::ParseMultiString(multiString);
+
+    return ERROR_SUCCESS;
+}
+
+
+inline LSTATUS RegKey::GetBinaryValueInternal(
+    std::vector<BYTE>& result,
+    const std::wstring& valueName,
+    std::string* const errorMessage
+) const
+{
+    _ASSERTE(IsValid());
+
+    // Clear output parameters
+    result.clear();
+    if (errorMessage != nullptr)
+    {
+        errorMessage->clear();
+    }
+
+
+    // Room for the binary data, to be read from the registry
+    std::vector<BYTE> binaryData;
+
+    // Size of binary data, in bytes
+    DWORD dataSize = 0;
+
+    constexpr DWORD flags = RRF_RT_REG_BINARY;
+
+    LSTATUS retCode = ERROR_MORE_DATA;
+
+    while (retCode == ERROR_MORE_DATA)
+    {
+        // Request the size of the binary data, in bytes
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,    // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,    // type not required
+            nullptr,    // output buffer not needed now
+            &dataSize
+        );
+        if (retCode != ERROR_SUCCESS)
+        {
+            if (errorMessage != nullptr)
+            {
+                *errorMessage = "Cannot get the size of the binary data: RegGetValueW failed.";
+            }
+
+            return retCode;
+        }
+
+        // Allocate a buffer of proper size to store the binary data
+        binaryData.resize(dataSize);
+
+        // Handle the special case of zero-length binary data:
+        // If the binary data value in the registry is empty, just return an empty vector.
+        if (dataSize == 0)
+        {
+            _ASSERTE(binaryData.empty());
+            _ASSERTE(result.empty());
+            return ERROR_SUCCESS;
+        }
+
+        // Call RegGetValue for the second time to read the binary data content into the vector
+        retCode = ::RegGetValueW(
+            m_hKey,
+            nullptr,            // no subkey
+            valueName.c_str(),
+            flags,
+            nullptr,            // type not required
+            binaryData.data(),  // output buffer
+            &dataSize
+        );
+    }
+
+    if (retCode != ERROR_SUCCESS)
+    {
+        if (errorMessage != nullptr)
+        {
+            *errorMessage = "Cannot get the binary data: RegGetValueW failed.";
+        }
+
+        return retCode;
+    }
+
+    // Resize vector to the actual size returned by the last call to RegGetValue
+    binaryData.resize(dataSize);
+
+    // result <= binaryData
+    std::swap(result, binaryData);
+
+    return ERROR_SUCCESS;
+}
+
+
+#endif // GIOVANNI_DICANIO_WINREG_WINDOWS_XP_COMPATIBLE
+
+
+//------------------------------------------------------------------------------
 //                          RegException Inline Methods
 //------------------------------------------------------------------------------
 
@@ -2874,19 +3658,19 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 
 template <typename T>
 inline RegExpected<T>::RegExpected(const RegResult& errorCode) noexcept
-    : m_var{ errorCode }
+    : m_result{ errorCode }
 {}
 
 
 template <typename T>
 inline RegExpected<T>::RegExpected(const T& value)
-    : m_var{ value }
+    : m_value{ value }
 {}
 
 
 template <typename T>
 inline RegExpected<T>::RegExpected(T&& value)
-    : m_var{ std::move(value) }
+    : m_value{ std::move(value) }
 {}
 
 
@@ -2900,7 +3684,7 @@ inline RegExpected<T>::operator bool() const noexcept
 template <typename T>
 inline bool RegExpected<T>::IsValid() const noexcept
 {
-    return std::holds_alternative<T>(m_var);
+    return m_result.IsOk();
 }
 
 
@@ -2910,20 +3694,23 @@ inline const T& RegExpected<T>::GetValue() const
     // Check that the object stores a valid value
     _ASSERTE(IsValid());
 
-    // If the object is in a valid state, the variant stores an instance of T
-    return std::get<T>(m_var);
+    if (!IsValid())
+    {
+        // TODO: May use another exception?
+        throw std::invalid_argument{
+            "winreg::RegExpected<T>::GetValue() called on an instance in error state."
+        };
+    }
+
+    // If the object is in a valid state, return the value
+    return m_value;
 }
 
 
 template <typename T>
 inline RegResult RegExpected<T>::GetError() const
 {
-    // Check that the object is in an invalid state
-    _ASSERTE(!IsValid());
-
-    // If the object is in an invalid state, the variant stores a RegResult
-    // that represents an error code from the Windows Registry API
-    return std::get<RegResult>(m_var);
+    return m_result;
 }
 
 

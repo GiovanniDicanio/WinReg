@@ -53,7 +53,7 @@ void Test()
 
     vector<pair<wstring, DWORD>> values = key.EnumValues();
     wcout << L"Values:\n";
-    for (const auto& [valueName, valueType] : values)
+    for (const auto & [valueName, valueType] : values)
     {
         wcout << L"  [" << valueName << L"](" << RegKey::RegTypeToString(valueType) << L")\n";
     }

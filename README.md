@@ -1,4 +1,4 @@
-# WinReg v6.2.0
+# WinReg v6.3.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -117,6 +117,7 @@ for (const auto & [valueName, valueType] : values)
 }
 ```
 
+
 You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
 instead of throwing an exception on error:
 
@@ -148,12 +149,6 @@ else
 }
 ```
 
-**Version Note**: WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
-`std::optional<T>` (discarding the information about the error code).
-Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
-the error information on failure).
-
-
 Note that many methods are available in _two forms_: one that _throws an exception_ of type 
 `RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
 of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
@@ -169,3 +164,18 @@ See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **docu
 
 Thanks to everyone who contributed to this project with some additional features and constructive 
 comments and suggestions.
+
+
+### Version Notes
+
+* WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
+`std::optional<T>` (discarding the information about the error code).
+Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
+the error information on failure).
+
+* WinReg v6.2.0 is the latest version that requires Vista+ due to the use of the `RegGetValue`
+API, which is not available in Windows XP. In **v6.3.0** I reimplemented part of the WinReg code
+to use `RegQueryValueEx` instead of `RegGetValue` for Windows XP compatibility.
+(To enable **Windows XP compatibility mode**, `#define GIOVANNI_DICANIO_WINREG_WINDOWS_XP_COMPATIBLE`
+_before_ including the WinReg.hpp header.)
+
