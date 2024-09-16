@@ -286,6 +286,39 @@ void Test()
 
 
     //
+    // Test the ContainsValue and ContainsSubKey methods
+    //
+
+    // Test the ContainsValue method with a value that exists
+    bool valueIsPresent = key.ContainsValue(L"TestValueDword");
+    if (valueIsPresent == false)
+    {
+        wcout << L"RegKey::ContainsValue failed to check an existing value.\n";
+    }
+
+    // Test the ContainsValue method with a value that does not exist
+    valueIsPresent = key.ContainsValue(L"Value_That_Does_NOT_Exist");
+    if (valueIsPresent == true)
+    {
+        wcout << L"RegKey::ContainsValue failed to check a non-existing value.\n";
+    }
+
+    // Test the ContainsSubKey method with a subkey that exists
+    bool subKeyIsPresent = key.ContainsSubKey(L"SubKey1");
+    if (subKeyIsPresent == false)
+    {
+        wcout << L"RegKey::ContainsSubKey failed to check an existing subkey.\n";
+    }
+
+    // Test the ContainsSubKey method with a subkey that does not exist
+    subKeyIsPresent = key.ContainsSubKey(L"SubKey_That_Does_NOT_Exist");
+    if (subKeyIsPresent == true)
+    {
+        wcout << L"RegKey::ContainsSubKey failed to check a non-existing subkey.\n";
+    }
+
+
+    //
     // Remove some test values
     //
 
