@@ -1,4 +1,4 @@
-# WinReg v6.2.0
+# WinReg v6.3.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -113,6 +113,17 @@ for (const auto & [valueName, valueType] : values)
     //
     // Use valueName and valueType
     //
+    ...
+}
+```
+
+You can also check if a key contains a given value or even a subkey, invoking the
+`RegKey::ContainsValue` and `RegKey::ContainsSubKey` methods, e.g.:
+
+```c++
+if (key.ContainsValue(L"Connie"))
+{
+    // The key contains the value named "Connie"
     ...
 }
 ```

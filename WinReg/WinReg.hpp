@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, February 22nd
+// Last update:   2024, September 16th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -406,6 +406,12 @@ public:
     // the DWORD is the value type.
     [[nodiscard]] std::vector<std::pair<std::wstring, DWORD>> EnumValues() const;
 
+    // Check if the current key contains the specified value
+    [[nodiscard]] bool ContainsValue(const std::wstring& valueName) const;
+
+    // Check if the current key contains the specified sub-key
+    [[nodiscard]] bool ContainsSubKey(const std::wstring& subKey) const;
+
 
     //
     // Query Operations Returning RegExpected
@@ -429,6 +435,12 @@ public:
     // Returns a vector of pairs: In each pair, the wstring is the value name,
     // the DWORD is the value type.
     [[nodiscard]] RegExpected<std::vector<std::pair<std::wstring, DWORD>>> TryEnumValues() const;
+
+    // Check if the current key contains the specified value
+    [[nodiscard]] RegExpected<bool> TryContainsValue(const std::wstring& valueName) const;
+
+    // Check if the current key contains the specified sub-key
+    [[nodiscard]] RegExpected<bool> TryContainsSubKey(const std::wstring& subKey) const;
 
 
     //
@@ -627,19 +639,7 @@ inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
 //                  Private Helper Classes and Functions
 //------------------------------------------------------------------------------
 
-//
-// Note: Naming this private namespace `winreg_internal` instead of just
-// `internal` (or `detail`) helps protecting against client code
-// that does something like:
-//
-//      using namespace winreg;
-//
-// In such cases, WinReg's internal private helper code is still *protected*
-// under the `winreg_internal` namespace, and will not collide against
-// other libraries' internal/detail namespaces.
-//
-
-namespace winreg_internal
+namespace details
 {
 
 //------------------------------------------------------------------------------
@@ -881,7 +881,7 @@ template <typename T>
 }
 
 
-} // namespace winreg_internal
+} // namespace details
 
 
 //------------------------------------------------------------------------------
@@ -1283,7 +1283,7 @@ inline void RegKey::SetMultiStringValue(
     _ASSERTE(IsValid());
 
     // First, we have to build a double-NUL-terminated multi-string from the input data
-    const std::vector<wchar_t> multiString = winreg_internal::BuildMultiString(data);
+    const std::vector<wchar_t> multiString = details::BuildMultiString(data);
 
     // Total size, in bytes, of the whole multi-string structure
     const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
@@ -1428,7 +1428,7 @@ inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
     // since a *dynamic allocation* happens for creating the std::vector in BuildMultiString.
     // And, if dynamic memory allocations fail, an exception is thrown.
     //
-    const std::vector<wchar_t> multiString = winreg_internal::BuildMultiString(data);
+    const std::vector<wchar_t> multiString = details::BuildMultiString(data);
 
     // Total size, in bytes, of the whole multi-string structure
     const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
@@ -1719,7 +1719,7 @@ inline std::vector<std::wstring> RegKey::GetMultiStringValue(const std::wstring&
 
     // Convert the double-null-terminated string structure to a vector<wstring>,
     // and return that back to the caller
-    return winreg_internal::ParseMultiString(multiString);
+    return details::ParseMultiString(multiString);
 }
 
 
@@ -1811,7 +1811,7 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     return RegExpected<RegValueType>{ data };
@@ -1839,7 +1839,7 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     return RegExpected<RegValueType>{ data };
@@ -1874,7 +1874,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+            return details::MakeRegExpectedWithError<RegValueType>(retCode);
         }
 
         // Allocate a string of proper size.
@@ -1896,7 +1896,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
 
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
@@ -1941,7 +1941,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+            return details::MakeRegExpectedWithError<RegValueType>(retCode);
         }
 
         // Allocate a string of proper size.
@@ -1963,7 +1963,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
 
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
@@ -2004,7 +2004,7 @@ inline RegExpected<std::vector<std::wstring>>
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+            return details::MakeRegExpectedWithError<RegValueType>(retCode);
         }
 
         // Allocate room for the result multi-string.
@@ -2026,7 +2026,7 @@ inline RegExpected<std::vector<std::wstring>>
 
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Resize vector to the actual size returned by the last call to RegGetValue.
@@ -2036,7 +2036,7 @@ inline RegExpected<std::vector<std::wstring>>
 
     // Convert the double-null-terminated string structure to a vector<wstring>,
     // and return that back to the caller
-    return RegExpected<RegValueType>{ winreg_internal::ParseMultiString(data) };
+    return RegExpected<RegValueType>{ details::ParseMultiString(data) };
 }
 
 
@@ -2070,7 +2070,7 @@ inline RegExpected<std::vector<BYTE>>
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+            return details::MakeRegExpectedWithError<RegValueType>(retCode);
         }
 
         // Allocate a buffer of proper size to store the binary data
@@ -2098,7 +2098,7 @@ inline RegExpected<std::vector<BYTE>>
 
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
+        return details::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
     // Resize vector to the actual size returned by the last call to RegGetValue
@@ -2262,6 +2262,80 @@ inline std::vector<std::pair<std::wstring, DWORD>> RegKey::EnumValues() const
 }
 
 
+inline bool RegKey::ContainsValue(const std::wstring& valueName) const
+{
+    _ASSERTE(IsValid());
+
+    // Invoke RegGetValueW to just check if the input value exists under the current key
+    LSTATUS retCode = ::RegGetValueW(
+        m_hKey,             // current key
+        nullptr,            // no subkey - check value in current key
+        valueName.c_str(),  // value name
+        RRF_RT_ANY,         // no type restriction on this value
+        nullptr,            // we don't need to know the type of the value
+        nullptr, nullptr    // we don't need the actual value, just to check if it exists
+    );
+    if (retCode == ERROR_SUCCESS)
+    {
+        // The value exists under the current key
+        return true;
+    }
+    else if (retCode == ERROR_FILE_NOT_FOUND)
+    {
+        // The value does *not* exist under the current key
+        return false;
+    }
+    else
+    {
+        // Some other error occurred - signal it by throwing an exception
+        throw RegException{
+            retCode,
+            "RegGetValueW failed when checking if the current key contains the specified value."
+        };
+    }
+}
+
+
+inline bool RegKey::ContainsSubKey(const std::wstring& subKey) const
+{
+    _ASSERTE(IsValid());
+
+    // Let's try and open the specified subKey, then check the return code
+    // of RegOpenKeyExW to figure out if the subKey exists or not.
+    HKEY hSubKey = nullptr;
+    LSTATUS retCode = ::RegOpenKeyExW(
+        m_hKey,
+        subKey.c_str(),
+        0,
+        KEY_READ,
+        &hSubKey
+    );
+    if (retCode == ERROR_SUCCESS)
+    {
+        // We were able to open the specified sub-key, so the sub-key does exist.
+        //
+        // Don't forget to close the sub-key opened for this testing purpose!
+        ::RegCloseKey(hSubKey);
+        hSubKey = nullptr;
+
+        return true;
+    }
+    else if ((retCode == ERROR_FILE_NOT_FOUND) || (retCode == ERROR_PATH_NOT_FOUND))
+    {
+        // The specified sub-key does not exist
+        return false;
+    }
+    else
+    {
+        // Some other error occurred - signal it by throwing an exception
+        throw RegException{
+            retCode,
+            "RegOpenKeyExW failed when checking if the current key contains the specified sub-key."
+        };
+    }
+}
+
+
 inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
 {
     _ASSERTE(IsValid());
@@ -2288,7 +2362,7 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+        return details::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     // NOTE: According to the MSDN documentation, the size returned for subkey name max length
@@ -2322,7 +2396,7 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+            return details::MakeRegExpectedWithError<ReturnType>(retCode);
         }
 
         // On success, the ::RegEnumKeyEx API writes the length of the
@@ -2362,7 +2436,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+        return details::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     // NOTE: According to the MSDN documentation, the size returned for value name max length
@@ -2397,7 +2471,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+            return details::MakeRegExpectedWithError<ReturnType>(retCode);
         }
 
         // On success, the RegEnumValue API writes the length of the
@@ -2411,6 +2485,74 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
     }
 
     return RegExpected<ReturnType>{ valueInfo };
+}
+
+
+inline RegExpected<bool> RegKey::TryContainsValue(const std::wstring& valueName) const
+{
+    _ASSERTE(IsValid());
+
+    // Invoke RegGetValueW to just check if the input value exists under the current key
+    LSTATUS retCode = ::RegGetValueW(
+        m_hKey,             // current key
+        nullptr,            // no subkey - check value in current key
+        valueName.c_str(),  // value name
+        RRF_RT_ANY,         // no type restriction on this value
+        nullptr,            // we don't need to know the type of the value
+        nullptr, nullptr    // we don't need the actual value, just to check if it exists
+    );
+    if (retCode == ERROR_SUCCESS)
+    {
+        // The value exists under the current key
+        return RegExpected<bool>{ true };
+    }
+    else if (retCode == ERROR_FILE_NOT_FOUND)
+    {
+        // The value does *not* exist under the current key
+        return RegExpected<bool>{ false };
+    }
+    else
+    {
+        // Some other error occurred
+        return details::MakeRegExpectedWithError<bool>(retCode);
+    }
+}
+
+
+inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey) const
+{
+    _ASSERTE(IsValid());
+
+    // Let's try and open the specified subKey, then check the return code
+    // of RegOpenKeyExW to figure out if the subKey exists or not.
+    HKEY hSubKey = nullptr;
+    LSTATUS retCode = ::RegOpenKeyExW(
+        m_hKey,
+        subKey.c_str(),
+        0,
+        KEY_READ,
+        &hSubKey
+    );
+    if (retCode == ERROR_SUCCESS)
+    {
+        // We were able to open the specified sub-key, so the sub-key does exist.
+        //
+        // Don't forget to close the sub-key opened for this testing purpose!
+        ::RegCloseKey(hSubKey);
+        hSubKey = nullptr;
+
+        return RegExpected<bool>{ true };
+    }
+    else if ((retCode == ERROR_FILE_NOT_FOUND) || (retCode == ERROR_PATH_NOT_FOUND))
+    {
+        // The specified sub-key does not exist
+        return RegExpected<bool>{ false };
+    }
+    else
+    {
+        // Some other error occurred
+        return details::MakeRegExpectedWithError<bool>(retCode);
+    }
 }
 
 
@@ -2457,7 +2599,7 @@ inline RegExpected<DWORD> RegKey::TryQueryValueType(const std::wstring& valueNam
 
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+        return details::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     return RegExpected<ReturnType>{ typeId };
@@ -2515,7 +2657,7 @@ inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+        return details::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     return RegExpected<ReturnType>{ infoKey };
@@ -2544,7 +2686,7 @@ inline RegExpected<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
     LSTATUS retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
     if (retCode != ERROR_SUCCESS)
     {
-        return winreg_internal::MakeRegExpectedWithError<ReturnType>(retCode);
+        return details::MakeRegExpectedWithError<ReturnType>(retCode);
     }
 
     KeyReflection keyReflection = isReflectionDisabled ? KeyReflection::ReflectionDisabled
@@ -2844,7 +2986,7 @@ inline std::wstring RegResult::ErrorMessage() const
 inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 {
     // Invoke FormatMessage() to retrieve the error message from Windows
-    winreg_internal::ScopedLocalFree<wchar_t> messagePtr;
+    details::ScopedLocalFree<wchar_t> messagePtr;
     DWORD retCode = ::FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
