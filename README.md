@@ -1,4 +1,4 @@
-# WinReg v6.3.0
+# WinReg v6.3.0-WinXP
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -173,8 +173,8 @@ comments and suggestions.
 Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
 the error information on failure).
 
-* WinReg v6.2.0 is the latest version that requires Vista+ due to the use of the `RegGetValue`
-API, which is not available in Windows XP. In **v6.3.0** I reimplemented part of the WinReg code
+* WinReg v6.2.0 requires Vista+ due to the use of the `RegGetValue` API,
+which is not available in Windows XP. In **v6.3.0-WinXP** I reimplemented part of the WinReg code
 to use `RegQueryValueEx` instead of `RegGetValue` for Windows XP compatibility.
 (To enable **Windows XP compatibility mode**, `#define GIOVANNI_DICANIO_WINREG_WINDOWS_XP_COMPATIBLE`
 _before_ including the WinReg.hpp header.)
