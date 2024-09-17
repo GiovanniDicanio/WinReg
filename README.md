@@ -1,4 +1,4 @@
-# WinReg v6.2.0-cpp14 -- C++14 Compatible Version
+# WinReg v6.3.0-cpp14 -- C++14 Compatible Version
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -30,8 +30,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
 
-This code is currently developed using **Visual Studio 2019** in its **default C++14** mode 
-(however, it also compiles successfully in C++17 mode). 
+This code is currently developed using **Visual Studio 2019** in its **default C++14** mode.
 The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 
 This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
@@ -99,6 +98,17 @@ for (const auto & v : values)
     //   - v.first  (wstring) is the value name
     //   - v.second (DWORD)   is the value type
     //
+    ...
+}
+```
+
+You can also check if a key contains a given value or even a subkey, invoking the
+`RegKey::ContainsValue` and `RegKey::ContainsSubKey` methods, e.g.:
+
+```c++
+if (key.ContainsValue(L"Connie"))
+{
+    // The key contains the value named "Connie"
     ...
 }
 ```
