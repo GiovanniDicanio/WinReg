@@ -1,4 +1,4 @@
-# WinReg v6.3.1
+# WinReg v6.3.1 -- Non-header-only Version
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -34,8 +34,8 @@ This code is currently developed using **Visual Studio 2019** with **C++17** fea
 (`/std:c++17`). I have no longer tested the code with previous compilers. 
 The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 
-This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
-header file.
+The **public header** file for this library is **[`WinReg.hpp`](WinReg/WinReg.hpp)**;
+the **implementation** code is contained inside **[`WinReg.cpp`](WinReg/WinReg.cpp)**.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 

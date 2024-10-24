@@ -12,6 +12,9 @@
     <Filter Include="Unit Test">
       <UniqueIdentifier>{219a0ea3-cdf9-4c0b-993b-70952460dba8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{366a0710-3227-48ce-b330-1a763ede321f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="WinReg.hpp">
@@ -21,6 +24,9 @@
   <ItemGroup>
     <ClCompile Include="WinRegTest.cpp">
       <Filter>Unit Test</Filter>
+    </ClCompile>
+    <ClCompile Include="WinReg.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
