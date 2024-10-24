@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, September 16th
+// Last update:   2024, October 24th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -68,7 +68,9 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
+#include <limits>           // std::numeric_limits
 #include <memory>           // std::unique_ptr, std::make_unique
+#include <stdexcept>        // std::overflow_error
 #include <string>           // std::wstring
 #include <system_error>     // std::system_error
 #include <utility>          // std::swap, std::pair, std::move
@@ -292,10 +294,16 @@ public:
                                              const ULONGLONG& data) noexcept;
 
     [[nodiscard]] RegResult TrySetStringValue(const std::wstring& valueName,
-                                              const std::wstring& data) noexcept;
+                                              const std::wstring& data);
+    // Note: The TrySetStringValue method CANNOT be marked noexcept,
+    // because internally the method *may* throw an exception if the input string is too big
+    // (size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetExpandStringValue(const std::wstring& valueName,
-                                                    const std::wstring& data) noexcept;
+                                                    const std::wstring& data);
+    // Note: The TrySetExpandStringValue method CANNOT be marked noexcept,
+    // because internally the method *may* throw an exception if the input string is too big
+    // (size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetMultiStringValue(const std::wstring& valueName,
                                                    const std::vector<std::wstring>& data);
@@ -304,7 +312,10 @@ public:
     // that will be stored in the Registry.
 
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
-                                              const std::vector<BYTE>& data) noexcept;
+                                              const std::vector<BYTE>& data);
+    // Note: This overload of the TrySetBinaryValue method CANNOT be marked noexcept,
+    // because internally the method *may* throw an exception if the input vector is too large
+    // (vector::size size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
                                               const void* data,
@@ -881,6 +892,92 @@ template <typename T>
 }
 
 
+//------------------------------------------------------------------------------
+// Return true if casting a size_t value to a DWORD is safe
+// (e.g. there is no overflow); false otherwise.
+//------------------------------------------------------------------------------
+[[nodiscard]] inline bool SizeToDwordCastIsSafe(const size_t size) noexcept
+{
+#ifdef _WIN64
+
+    //
+    // In 64-bit builds, DWORD is an unsigned 32-bit integer,
+    // while size_t is an unsigned *64-bit* integer.
+    // So we need to pay attention to the conversion from size_t --> to DWORD.
+    //
+
+    using DestinationType = DWORD;
+
+    // Pre-compute at compile-time the maximum value that can be stored by a DWORD.
+    // Note that this value is stored in a size_t for proper comparison with the 'size' parameter.
+    constexpr size_t kMaxDwordValue = static_cast<size_t>((std::numeric_limits<DestinationType>::max)());
+
+    // Check against overflow
+    if (size > kMaxDwordValue)
+    {
+        // Overflow from size_t to DWORD
+        return false;
+    }
+
+    // The conversion is safe
+    return true;
+
+#else
+    //
+    // In 32-bit builds with Microsoft Visual C++, a size_t is an unsigned 32-bit value,
+    // just like a DWORD. So, we can optimized this case out for 32-bit builds.
+    //
+
+    static_assert(sizeof(size_t) == sizeof(DWORD)); // Both 32-bit unsigned integers on 32-bit x86
+    UNREFERENCED_PARAMETER(size);
+    return true;
+
+#endif // _WIN64
+}
+
+
+//------------------------------------------------------------------------------
+// Safely cast a size_t value (usually from the STL)
+// to a DWORD (usually for Win32 API calls).
+// In case of overflow, throws an exception of type std::overflow_error.
+//------------------------------------------------------------------------------
+[[nodiscard]] inline DWORD SafeCastSizeToDword(const size_t size)
+{
+
+#ifdef _WIN64
+
+    //
+    // In 64-bit builds, DWORD is an unsigned 32-bit integer,
+    // while size_t is an unsigned *64-bit* integer.
+    // So we need to pay attention to the conversion from size_t --> to DWORD.
+    //
+
+    using DestinationType = DWORD;
+
+    // Check against overflow
+    if (!SizeToDwordCastIsSafe(size))
+    {
+        throw std::overflow_error(
+            "Input size_t value is too big: size_t value doesn't fit into a DWORD.");
+    }
+
+    return static_cast<DestinationType>(size);
+
+#else
+    //
+    // In 32-bit builds with Microsoft Visual C++, a size_t is an unsigned 32-bit value,
+    // just like a DWORD. So, we can optimize this case out for 32-bit builds.
+    //
+
+    _ASSERTE(SizeToDwordCastIsSafe(size)); // double-check just in debug builds
+
+    static_assert(sizeof(size_t) == sizeof(DWORD)); // Both 32-bit unsigned integers on 32-bit x86
+    return static_cast<DWORD>(size);
+
+#endif // _WIN64
+}
+
+
 } // namespace details
 
 
@@ -1236,7 +1333,7 @@ inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wst
     _ASSERTE(IsValid());
 
     // String size including the terminating NUL, in bytes
-    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword((data.length() + 1) * sizeof(wchar_t));
 
     LSTATUS retCode = ::RegSetValueExW(
         m_hKey,
@@ -1258,7 +1355,7 @@ inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const st
     _ASSERTE(IsValid());
 
     // String size including the terminating NUL, in bytes
-    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword((data.length() + 1) * sizeof(wchar_t));
 
     LSTATUS retCode = ::RegSetValueExW(
         m_hKey,
@@ -1286,7 +1383,7 @@ inline void RegKey::SetMultiStringValue(
     const std::vector<wchar_t> multiString = details::BuildMultiString(data);
 
     // Total size, in bytes, of the whole multi-string structure
-    const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword(multiString.size() * sizeof(wchar_t));
 
     LSTATUS retCode = ::RegSetValueExW(
         m_hKey,
@@ -1308,7 +1405,7 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
     _ASSERTE(IsValid());
 
     // Total data size, in bytes
-    const DWORD dataSize = static_cast<DWORD>(data.size());
+    const DWORD dataSize = details::SafeCastSizeToDword(data.size());
 
     LSTATUS retCode = ::RegSetValueExW(
         m_hKey,
@@ -1380,12 +1477,12 @@ inline RegResult RegKey::TrySetQwordValue(const std::wstring& valueName,
 
 
 inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName,
-                                           const std::wstring& data) noexcept
+                                           const std::wstring& data)
 {
     _ASSERTE(IsValid());
 
     // String size including the terminating NUL, in bytes
-    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword((data.length() + 1) * sizeof(wchar_t));
 
     return RegResult{ ::RegSetValueExW(
         m_hKey,
@@ -1399,12 +1496,12 @@ inline RegResult RegKey::TrySetStringValue(const std::wstring& valueName,
 
 
 inline RegResult RegKey::TrySetExpandStringValue(const std::wstring& valueName,
-                                                 const std::wstring& data) noexcept
+                                                 const std::wstring& data)
 {
     _ASSERTE(IsValid());
 
     // String size including the terminating NUL, in bytes
-    const DWORD dataSize = static_cast<DWORD>((data.length() + 1) * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword((data.length() + 1) * sizeof(wchar_t));
 
     return RegResult{ ::RegSetValueExW(
         m_hKey,
@@ -1431,7 +1528,7 @@ inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
     const std::vector<wchar_t> multiString = details::BuildMultiString(data);
 
     // Total size, in bytes, of the whole multi-string structure
-    const DWORD dataSize = static_cast<DWORD>(multiString.size() * sizeof(wchar_t));
+    const DWORD dataSize = details::SafeCastSizeToDword(multiString.size() * sizeof(wchar_t));
 
     return RegResult{ ::RegSetValueExW(
         m_hKey,
@@ -1445,12 +1542,12 @@ inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
 
 
 inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
-                                           const std::vector<BYTE>& data) noexcept
+                                           const std::vector<BYTE>& data)
 {
     _ASSERTE(IsValid());
 
     // Total data size, in bytes
-    const DWORD dataSize = static_cast<DWORD>(data.size());
+    const DWORD dataSize = details::SafeCastSizeToDword(data.size());
 
     return RegResult{ ::RegSetValueExW(
         m_hKey,
