@@ -1,4 +1,4 @@
-# WinReg v6.3.1 -- Non-header-only Version
+# [Unmaintained] WinReg v6.3.1 -- Non-header-only Version
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
