@@ -9,7 +9,7 @@
 //               Copyright (C) by Giovanni Dicanio
 //
 // First version: 2017, January 22nd
-// Last update:   2024, October 24th
+// Last update:   2024, November 6th
 //
 // E-mail: <first name>.<last name> AT REMOVE_THIS gmail.com
 //
@@ -896,7 +896,7 @@ template <typename T>
 // Return true if casting a size_t value to a DWORD is safe
 // (e.g. there is no overflow); false otherwise.
 //------------------------------------------------------------------------------
-[[nodiscard]] inline bool SizeToDwordCastIsSafe(const size_t size) noexcept
+[[nodiscard]] inline bool SizeToDwordCastIsSafe([[maybe_unused]] const size_t size) noexcept
 {
 #ifdef _WIN64
 
@@ -929,7 +929,7 @@ template <typename T>
     //
 
     static_assert(sizeof(size_t) == sizeof(DWORD)); // Both 32-bit unsigned integers on 32-bit x86
-    UNREFERENCED_PARAMETER(size);
+    //UNREFERENCED_PARAMETER(size); // Replaced with [[maybe_unused]] for compatibility with MinGW 32-bit
     return true;
 
 #endif // _WIN64
