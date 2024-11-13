@@ -12,19 +12,42 @@
     <Filter Include="Unit Test">
       <UniqueIdentifier>{219a0ea3-cdf9-4c0b-993b-70952460dba8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\WinReg">
+      <UniqueIdentifier>{cf420e71-7e36-4d2d-bb28-a1fb133570e8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="WinReg.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WinRegTest.cpp">
+    <Text Include="..\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Tests\WinRegTest.cpp">
       <Filter>Unit Test</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\LICENSE" />
-    <None Include="..\README.md" />
+    <ClInclude Include="..\Include\WinReg\Details.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\RegException.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\RegExpected.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\RegResult.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\ScopedLocalFree.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\Utf8Conv.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\WinReg\WinReg.hpp">
+      <Filter>Header Files\WinReg</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

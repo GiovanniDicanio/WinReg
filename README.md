@@ -1,4 +1,4 @@
-# WinReg v6.3.2
+# WinReg v7.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -6,8 +6,8 @@ by Giovanni Dicanio
 The Windows Registry C-interface API is  _very low-level_ and _hard_ to use.
 
 I developed some **C++ wrappers** around this low-level Win32 API, to raise the semantic level, 
-using C++ classes like `std::wstring`, `std::vector`, etc. instead of raw C-style buffers and 
-low-level mechanisms. 
+using C++ classes like `std::wstring`, `std::string`, `std::vector`, etc., 
+instead of raw C-style buffers and low-level mechanisms. 
 
 For example, the `REG_MULTI_SZ` registry type associated to double-NUL-terminated C-style strings 
 is handled using a much easier higher-level `vector<wstring>`. My C++ code does the _translation_ 
@@ -20,28 +20,28 @@ etc.).
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
-| Win32 Registry Type  | C++ Type                     |
-| -------------------- |:----------------------------:| 
-| `REG_DWORD`          | `DWORD`                      |
-| `REG_QWORD`          | `ULONGLONG`                  |
-| `REG_SZ`             | `std::wstring`               |
-| `REG_EXPAND_SZ`      | `std::wstring`               |
-| `REG_MULTI_SZ`       | `std::vector<std::wstring>`  |
-| `REG_BINARY`         | `std::vector<BYTE>`          |
+| Win32 Registry Type  | C++ Type                      |
+| -------------------- |:-----------------------------:| 
+| `REG_DWORD`          | `DWORD`                       |
+| `REG_QWORD`          | `ULONGLONG`                   |
+| `REG_SZ`             | `std::[w]string`              |
+| `REG_EXPAND_SZ`      | `std::[w]string`              |
+| `REG_MULTI_SZ`       | `std::vector<std::[w]string>` |
+| `REG_BINARY`         | `std::vector<BYTE>`           |
 
 
 This code is currently developed using **Visual Studio 2019** with **C++17** features enabled 
 (`/std:c++17`). I have no longer tested the code with previous compilers. 
 The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 
-This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
-header file.
+This is a **header-only** library; client code should `#include` this library's 
+main public header **`WinReg.hpp`**.
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
-The library exposes four main classes:
+The library exposes the following main classes:
 
-* `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
+* `RegKey` and `RegKeyUtf8`: tiny efficient wrappers around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 * `RegResult`: a tiny wrapper around Windows Registry API `LSTATUS` error codes, 
 returned by some `Try` methods (like `RegKey::TryOpen`)
@@ -49,8 +49,16 @@ returned by some `Try` methods (like `RegKey::TryOpen`)
 (e.g. a `DWORD` read from the registry) on success, 
 or an instance of a `RegResult`-wrapped return code on error
 
-There are many member functions inside the `RegKey` class, that wrap several parts of the native 
-C-interface Windows Registry API, in a convenient higher-level C++ way.
+The difference between the **`RegKey`** and **`RegKeyUtf8`** classes is that `RegKey` uses **UTF-16**
+strings stored in `std::wstring` (as in previous versions of the library),
+while `RegKeyUtf8` uses **UTF-8** `std::string`s at its public interface, and converts
+internally between UTF-8 and UTF-16 at the Windows API boundary.
+
+Both `RegKey` and `RegKeyUtf8` shares the same code structure, as they are instantiations
+of the common `RegKeyT` class template, with different string types at the public interface.
+
+There are many member functions inside the `RegKeyT` class template, that wrap several parts 
+of the native C-interface Windows Registry API, in a convenient higher-level C++ way.
 
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
@@ -164,10 +172,11 @@ else
 Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
 the error information on failure).
 
+Versin v7.0.0 is the first to offer the UTF-16 and UTF-8 string options at the interface.
 
 Note that many methods are available in _two forms_: one that _throws an exception_ of type 
 `RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
-of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
+of type `RegResult` (e.g. `RegKey::TryOpen`).
 In addition, as indicated above, some methods like the `RegKey::TryGet...Value` ones return 
 `RegExpected` instead of throwing exceptions; in case of errors, the returned `RegExpected` 
 contains a `RegResult` storing the error code.
@@ -176,7 +185,7 @@ You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
 
-See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **documentation**.
+See the [**`WinReg.hpp`**](Include/WinReg/WinReg.hpp) header for more details and **documentation**.
 
 Thanks to everyone who contributed to this project with some additional features and constructive 
 comments and suggestions.
