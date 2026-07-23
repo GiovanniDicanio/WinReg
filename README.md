@@ -1,4 +1,4 @@
-# WinReg v6.4.0
+# WinReg v6.5.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -29,7 +29,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_MULTI_SZ`       | `std::vector<std::wstring>`  |
 | `REG_BINARY`         | `std::vector<BYTE>`          |
 
-This code is currently developed using **Visual Studio 2019** with **C++17** features enabled 
+This code is currently developed using **Visual Studio 2022** with **C++17** features enabled 
 (`/std:c++17`). I have no longer tested the code with previous compilers. 
 The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 Moreover, the code compiles cleanly also in C++20 mode (`/std:c++20`).
@@ -185,3 +185,21 @@ See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **docu
 
 Thanks to everyone who contributed to this project with some additional features and constructive 
 comments and suggestions.
+
+---
+
+## Improvements in v6.5.0
+
+- Upgraded IDE from Visual Studio 2019 to Visual Studio 2022.
+- Use the more specific `winreg_internal` name for private/internal namespace, instead of the more general `details` 
+  (which is safer and more robust in case of clients doing `using namespace winreg;`).
+- Fixed bugs of `RegKey::LoadKey/TryLoadKey` failing because the handle is nulled-before-use via `Close` call.
+- Fixed zero-length `REG_SZ/REG_EXPAND_SZ` values crashing `RegKey`'s methods `GetStringValue`, `GetExpandStringValue`, 
+  `TryGetStringValue`, `TryGetExpandStringValue` (explicitly added an `if (dataSize == 0) ...` check).
+- Fixed `RegKey` move-assignment implementation (removed bogus extra condition `... && (m_hKey != other.m_hKey)`).
+- In case of zero-byte `REG_MULTI_SZ`, `RegKey::GetMultiStringValue` and `RegKey::TryGetMultiStringValue` 
+  will now return an empty vector instead of throwing `RegException{ERROR_INVALID_DATA, "Not a double-null terminated string."}`
+  when calling the `ParseMultiString` helper function.
+- Added a comment note clarifying a potential TOCTOU race condition inherent to the Win32 registry enumeration API 
+  and the `RegKey` enumeration methods `EnumSubKeys/EnumValues/TryEnumSubKeys/TryEnumValues`.
+
