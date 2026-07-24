@@ -845,20 +845,9 @@ private:
 // returns a vector of wstrings that represent the single strings.
 //
 // Also supports embedded empty strings in the sequence.
-//
-// NOTE: If the input vector is empty, returns an *empty* vector<wstring>,
-// instead of throwing an exception of type RegException with ERROR_INVALID_DATA
-// error code.
 //------------------------------------------------------------------------------
 [[nodiscard]] inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data)
 {
-    // Check the special case of empty input vector
-    if (data.empty())
-    {
-        // Just return an empty vector as result
-        return std::vector<std::wstring>{};
-    }
-
     // Make sure that there are two terminating L'\0's at the end of the sequence
     if (!IsDoubleNullTerminated(data))
     {
@@ -1734,15 +1723,8 @@ inline std::wstring RegKey::GetStringValue(const std::wstring& valueName) const
         throw RegException{ retCode, "Cannot get the string value: RegGetValueW failed." };
     }
 
-    if (dataSize == 0)
-    {
-        result.clear();
-    }
-    else
-    {
-        // Remove the NUL terminator scribbled by RegGetValue from the wstring
-        result.resize((dataSize / sizeof(wchar_t)) - 1);
-    }
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return result;
 }
@@ -1810,15 +1792,8 @@ inline std::wstring RegKey::GetExpandStringValue(
         throw RegException{ retCode, "Cannot get the expand string value: RegGetValueW failed." };
     }
 
-    if (dataSize == 0)
-    {
-        result.clear();
-    }
-    else
-    {
-        // Remove the NUL terminator scribbled by RegGetValue from the wstring
-        result.resize((dataSize / sizeof(wchar_t)) - 1);
-    }
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return result;
 }
@@ -2135,16 +2110,8 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-
-    if (dataSize == 0)
-    {
-        result.clear();
-    }
-    else
-    {
-        // Remove the NUL terminator scribbled by RegGetValue from the wstring
-        result.resize((dataSize / sizeof(wchar_t)) - 1);
-    }
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return RegExpected<RegValueType>{ result };
 }
@@ -2210,15 +2177,8 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
         return winreg_internal::MakeRegExpectedWithError<RegValueType>(retCode);
     }
 
-    if (dataSize == 0)
-    {
-        result.clear();
-    }
-    else
-    {
-        // Remove the NUL terminator scribbled by RegGetValue from the wstring
-        result.resize((dataSize / sizeof(wchar_t)) - 1);
-    }
+    // Remove the NUL terminator scribbled by RegGetValue from the wstring
+    result.resize((dataSize / sizeof(wchar_t)) - 1);
 
     return RegExpected<RegValueType>{ result };
 }
