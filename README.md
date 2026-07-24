@@ -1,4 +1,4 @@
-# WinReg v6.5.0
+# WinReg v6.5.1
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -188,7 +188,7 @@ comments and suggestions.
 
 ---
 
-## Improvements in v6.5.0
+## Improvements in v6.5.1
 
 - Upgraded IDE from Visual Studio 2019 to Visual Studio 2022.
 - Use the more specific `winreg_internal` name for private/internal namespace, instead of the more general `details` 
