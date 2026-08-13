@@ -11,7 +11,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "WinReg.hpp"   // Module to test
+#include "WinReg/WinReg.hpp"   // The WinReg library to test
 
 #include <exception>
 #include <iostream>
