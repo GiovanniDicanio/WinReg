@@ -16,6 +16,8 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
+#include <type_traits>      // std::is_same_v
+#include <utility>          // std::move
 #include <variant>          // std::variant
 
 #include "WinReg/RegResult.hpp"
@@ -36,19 +38,24 @@ class RegExpected
 {
 public:
 
+    static_assert(
+        !std::is_same_v<T, RegResult>,
+        "RegExpected<T>: T must not be RegResult.");
+
+
     //
     // Factory functions for RegExpected
     //
 
     // Build a RegExpected storing a valid value
-    [[nodiscard]] static RegExpected MakeSuccess(const T& value);
+    static [[nodiscard]] RegExpected MakeSuccess(const T& value);
 
     // Build a RegExpected storing a valid value
     // (optimized for move semantics)
-    [[nodiscard]] static RegExpected MakeSuccess(T&& value);
+    static [[nodiscard]] RegExpected MakeSuccess(T&& value);
 
     // Build a RegExpected storing an error code
-    [[nodiscard]] static RegExpected MakeError(RegResult error);
+    static [[nodiscard]] RegExpected MakeError(RegResult error);
 
 
 
@@ -76,11 +83,12 @@ public:
 
     // Access the error code (if the object contains an error status)
     // Throws an exception if the object is in valid state.
-    [[nodiscard]] const RegResult& GetError() const &;
+    [[nodiscard]] RegResult GetError() const;
 
 
-    // Helper function: Builds a RegExpected object that stores an error code
-    static [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(const LSTATUS retCode);
+    // Helper function: Builds a RegExpected object that stores a RegResult
+    // containing a Windows Registry API error code expressed as a "raw" LSTATUS.
+    static [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode);
 
 
 private:
@@ -90,9 +98,9 @@ private:
 
 
     // Use tags to distinguish between the success and error cases
-
     struct ValueTag {};
     struct ErrorTag {};
+
 
     // Initialize the object with a value (the success case)
     RegExpected(ValueTag, const T& value);
@@ -102,6 +110,10 @@ private:
     RegExpected(ValueTag, T&& value);
 
     // Initialize the object with an error code
+    //
+    // Note: RegResult is just a tiny wrapper around an LSTATUS (== LONG),
+    // so there is no need to provide two overloads const T& and T&&
+    // like for the "valid value" (ValueTag) success case.
     RegExpected(ErrorTag, RegResult errorCode);
 };
 
@@ -110,13 +122,6 @@ private:
 //------------------------------------------------------------------------------
 //                   RegExpected Inline Method Implementation
 //------------------------------------------------------------------------------
-
-template <typename T>
-inline RegExpected<T>::RegExpected(ErrorTag, RegResult errorCode)
-    : m_var{ std::in_place_type<RegResult>, std::move(errorCode) }
-{
-}
-
 
 template <typename T>
 inline RegExpected<T>::RegExpected(ValueTag, const T& value)
@@ -128,6 +133,13 @@ inline RegExpected<T>::RegExpected(ValueTag, const T& value)
 template <typename T>
 inline RegExpected<T>::RegExpected(ValueTag, T&& value)
     : m_var{ std::in_place_type<T>, std::move(value) }
+{
+}
+
+
+template <typename T>
+inline RegExpected<T>::RegExpected(ErrorTag, RegResult errorCode)
+    : m_var{ std::in_place_type<RegResult>, std::move(errorCode) }
 {
 }
 
@@ -191,7 +203,7 @@ inline const T&& RegExpected<T>::GetValue() const &&
 
 
 template <typename T>
-inline const RegResult& RegExpected<T>::GetError() const &
+inline RegResult RegExpected<T>::GetError() const
 {
     // Check that the object is in an invalid state
     _ASSERTE(!IsValid());
