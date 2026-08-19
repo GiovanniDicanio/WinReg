@@ -1533,7 +1533,7 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
         return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
     }
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>::MakeSuccess( data );
 }
 
 
@@ -1561,7 +1561,7 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
         return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
     }
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>::MakeSuccess(data);
 }
 
 
@@ -1621,7 +1621,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
     result.resize((dataSize / sizeof(wchar_t)) - 1);
 
-    return RegExpected<RegValueType>{ result };
+    return RegExpected<RegValueType>::MakeSuccess(result);
 }
 
 
@@ -1688,7 +1688,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(
     // Remove the NUL terminator scribbled by RegGetValue from the wstring
     result.resize((dataSize / sizeof(wchar_t)) - 1);
 
-    return RegExpected<RegValueType>{ result };
+    return RegExpected<RegValueType>::MakeSuccess(result);
 }
 
 
@@ -1755,7 +1755,7 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
 
     // Convert the double-null-terminated string structure to a vector<wstring>,
     // and return that back to the caller
-    return RegExpected<RegValueType>{ winreg_internal::ParseMultiString(data) };
+    return RegExpected<RegValueType>::MakeSuccess( winreg_internal::ParseMultiString(data) );
 }
 
 
@@ -1800,7 +1800,7 @@ RegKey::TryGetBinaryValue(const std::wstring& valueName) const
         if (dataSize == 0)
         {
             _ASSERTE(data.empty());
-            return RegExpected<RegValueType>{ data };
+            return RegExpected<RegValueType>::MakeSuccess( data );
         }
 
         // Call RegGetValue for the second time to read the binary data content into the vector
@@ -1823,7 +1823,7 @@ RegKey::TryGetBinaryValue(const std::wstring& valueName) const
     // Resize vector to the actual size returned by the last call to RegGetValue
     data.resize(dataSize);
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>::MakeSuccess(data);
 }
 
 
@@ -1871,7 +1871,7 @@ RegKey::TryGetRawValue(const std::wstring& valueName) const
         if (dataSize == 0)
         {
             _ASSERTE(data.empty());
-            return RegExpected<RegValueType>{ data };
+            return RegExpected<RegValueType>::MakeSuccess(data);
         }
 
         // Call RegGetValue for the second time to read the binary data content into the vector
@@ -1894,7 +1894,7 @@ RegKey::TryGetRawValue(const std::wstring& valueName) const
     // Resize vector to the actual size returned by the last call to RegGetValue
     data.resize(dataSize);
 
-    return RegExpected<RegValueType>{ data };
+    return RegExpected<RegValueType>::MakeSuccess(data);
 }
 
 
@@ -2196,7 +2196,7 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         subkeyNames.emplace_back(nameBuffer.get(), subKeyNameLen);
     }
 
-    return RegExpected<ReturnType>{ subkeyNames };
+    return RegExpected<ReturnType>::MakeSuccess( subkeyNames );
 }
 
 
@@ -2274,7 +2274,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
         );
     }
 
-    return RegExpected<ReturnType>{ valueInfo };
+    return RegExpected<ReturnType>::MakeSuccess( valueInfo );
 }
 
 
@@ -2294,12 +2294,12 @@ inline RegExpected<bool> RegKey::TryContainsValue(const std::wstring& valueName)
     if (retCode == ERROR_SUCCESS)
     {
         // The value exists under the current key
-        return RegExpected<bool>{ true };
+        return RegExpected<bool>::MakeSuccess(true);
     }
     else if (retCode == ERROR_FILE_NOT_FOUND)
     {
         // The value does *not* exist under the current key
-        return RegExpected<bool>{ false };
+        return RegExpected<bool>::MakeSuccess(false);
     }
     else
     {
@@ -2331,12 +2331,12 @@ inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey) c
         ::RegCloseKey(hSubKey);
         hSubKey = nullptr;
 
-        return RegExpected<bool>{ true };
+        return RegExpected<bool>::MakeSuccess( true );
     }
     else if ((retCode == ERROR_FILE_NOT_FOUND) || (retCode == ERROR_PATH_NOT_FOUND))
     {
         // The specified sub-key does not exist
-        return RegExpected<bool>{ false };
+        return RegExpected<bool>::MakeSuccess( false );
     }
     else
     {
@@ -2392,7 +2392,7 @@ inline RegExpected<DWORD> RegKey::TryQueryValueType(const std::wstring& valueNam
         return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
     }
 
-    return RegExpected<ReturnType>{ typeId };
+    return RegExpected<ReturnType>::MakeSuccess( typeId );
 }
 
 
@@ -2450,7 +2450,7 @@ inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
         return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
     }
 
-    return RegExpected<ReturnType>{ infoKey };
+    return RegExpected<ReturnType>::MakeSuccess( infoKey );
 }
 
 
@@ -2481,7 +2481,7 @@ inline RegExpected<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
 
     KeyReflection keyReflection = isReflectionDisabled ? KeyReflection::ReflectionDisabled
         : KeyReflection::ReflectionEnabled;
-    return RegExpected<ReturnType>{ keyReflection };
+    return RegExpected<ReturnType>::MakeSuccess( keyReflection );
 }
 
 

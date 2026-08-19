@@ -203,6 +203,7 @@ comments and suggestions.
 ## Improvements in v7.0.0
 
 - Split the single huge header WinReg.hpp into smaller headers.
+- Improved the `RegExpected<T>` implementation.
 
 
 ## Improvements in v6.5.1
