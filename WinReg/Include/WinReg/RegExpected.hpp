@@ -35,15 +35,22 @@ template <typename T>
 class RegExpected
 {
 public:
-    // Initialize the object with an error code
-    explicit RegExpected(const RegResult& errorCode) noexcept;
 
-    // Initialize the object with a value (the success case)
-    explicit RegExpected(const T& value);
+    //
+    // Factory functions for RegExpected
+    //
 
-    // Initialize the object with a value (the success case),
-    // optimized for move semantics
-    explicit RegExpected(T&& value);
+    // Build a RegExpected storing a valid value
+    [[nodiscard]] static RegExpected MakeSuccess(const T& value);
+
+    // Build a RegExpected storing a valid value
+    // (optimized for move semantics)
+    [[nodiscard]] static RegExpected MakeSuccess(T&& value);
+
+    // Build a RegExpected storing an error code
+    [[nodiscard]] static RegExpected MakeError(RegResult error);
+
+
 
     // Does this object contain a valid value?
     [[nodiscard]] explicit operator bool() const noexcept;
@@ -53,24 +60,50 @@ public:
 
     // Access the value (if the object contains a valid value).
     // Throws an exception if the object is in invalid state.
-    [[nodiscard]] const T& GetValue() const;
+    [[nodiscard]] const T& GetValue() const &;
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] T& GetValue() &;
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] T&& GetValue() &&;
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] const T&& GetValue() const &&;
 
     // Access the error code (if the object contains an error status)
     // Throws an exception if the object is in valid state.
-    [[nodiscard]] RegResult GetError() const;
+    [[nodiscard]] const RegResult& GetError() const &;
 
 
-
-    // Builds a RegExpected object that stores an error code
+    // Helper function: Builds a RegExpected object that stores an error code
     static [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(const LSTATUS retCode);
 
 
 private:
     // Stores a value of type T on success,
     // or RegResult on error
-    std::variant<RegResult, T> m_var;
-};
+    std::variant<T, RegResult> m_var;
 
+
+    // Use tags to distinguish between the success and error cases
+
+    struct ValueTag {};
+    struct ErrorTag {};
+
+    // Initialize the object with a value (the success case)
+    RegExpected(ValueTag, const T& value);
+
+    // Initialize the object with a value (the success case),
+    // optimized for move semantics
+    RegExpected(ValueTag, T&& value);
+
+    // Initialize the object with an error code
+    RegExpected(ErrorTag, RegResult errorCode);
+};
 
 
 
@@ -79,22 +112,22 @@ private:
 //------------------------------------------------------------------------------
 
 template <typename T>
-inline RegExpected<T>::RegExpected(const RegResult& errorCode) noexcept
-    : m_var{ errorCode }
+inline RegExpected<T>::RegExpected(ErrorTag, RegResult errorCode)
+    : m_var{ std::in_place_type<RegResult>, std::move(errorCode) }
 {
 }
 
 
 template <typename T>
-inline RegExpected<T>::RegExpected(const T& value)
-    : m_var{ value }
+inline RegExpected<T>::RegExpected(ValueTag, const T& value)
+    : m_var{ std::in_place_type<T>, value }
 {
 }
 
 
 template <typename T>
-inline RegExpected<T>::RegExpected(T&& value)
-    : m_var{ std::move(value) }
+inline RegExpected<T>::RegExpected(ValueTag, T&& value)
+    : m_var{ std::in_place_type<T>, std::move(value) }
 {
 }
 
@@ -114,7 +147,7 @@ inline bool RegExpected<T>::IsValid() const noexcept
 
 
 template <typename T>
-inline const T& RegExpected<T>::GetValue() const
+inline const T& RegExpected<T>::GetValue() const &
 {
     // Check that the object stores a valid value
     _ASSERTE(IsValid());
@@ -125,7 +158,40 @@ inline const T& RegExpected<T>::GetValue() const
 
 
 template <typename T>
-inline RegResult RegExpected<T>::GetError() const
+inline T& RegExpected<T>::GetValue() &
+{
+    // Check that the object stores a valid value
+    _ASSERTE(IsValid());
+
+    // If the object is in a valid state, the variant stores an instance of T
+    return std::get<T>(m_var);
+}
+
+
+template <typename T>
+inline T&& RegExpected<T>::GetValue() &&
+{
+    // Check that the object stores a valid value
+    _ASSERTE(IsValid());
+
+    // If the object is in a valid state, the variant stores an instance of T
+    return std::get<T>(std::move(m_var));
+}
+
+
+template <typename T>
+inline const T&& RegExpected<T>::GetValue() const &&
+{
+    // Check that the object stores a valid value
+    _ASSERTE(IsValid());
+
+    // If the object is in a valid state, the variant stores an instance of T
+    return std::get<T>(std::move(m_var));
+}
+
+
+template <typename T>
+inline const RegResult& RegExpected<T>::GetError() const &
 {
     // Check that the object is in an invalid state
     _ASSERTE(!IsValid());
@@ -137,9 +203,31 @@ inline RegResult RegExpected<T>::GetError() const
 
 
 template <typename T>
+inline RegExpected<T> RegExpected<T>::MakeSuccess(const T& value)
+{
+    return RegExpected{ ValueTag{}, value };
+}
+
+
+template <typename T>
+inline RegExpected<T> RegExpected<T>::MakeSuccess(T&& value)
+{
+    return RegExpected{ ValueTag{}, std::move(value) };
+}
+
+
+template <typename T>
+inline RegExpected<T> RegExpected<T>::MakeError(RegResult error)
+{
+    return RegExpected{ ErrorTag{}, std::move(error) };
+
+}
+
+
+template <typename T>
 inline RegExpected<T> RegExpected<T>::MakeRegExpectedWithError(const LSTATUS retCode)
 {
-    return RegExpected<T>{ RegResult{ retCode } };
+    return RegExpected<T>::MakeError( RegResult{ retCode } );
 }
 
 

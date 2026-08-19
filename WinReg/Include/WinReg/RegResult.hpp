@@ -36,6 +36,11 @@ public:
     // Initialize with specific Windows Registry API LSTATUS return code
     explicit RegResult(LSTATUS result) noexcept;
 
+    // This class is a tiny C++ object wrapper around an LSTATUS (which is basically
+    // a LONG, i.e. a 32-bit integer). So the default copy and move operations
+    // are just fine (they will basically copy the 32-bit LSTATUS integer).
+
+
     // Is the wrapped code a success code?
     [[nodiscard]] bool IsOk() const noexcept;
 
