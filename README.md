@@ -202,7 +202,7 @@ comments and suggestions.
 
 ## Improvements in v7.0.0
 
-- Split the single huge header WinReg.hpp into smaller headers.
+- Split the single huge monolithic header `WinReg.hpp` into smaller headers (the library is still header-only).
 - Improved the `RegExpected<T>` implementation.
 
 
