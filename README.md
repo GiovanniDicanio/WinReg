@@ -1,4 +1,4 @@
-# WinReg v6.5.1
+# WinReg v7.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -34,8 +34,21 @@ This code is currently developed using **Visual Studio 2022** with **C++17** fea
 The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
 Moreover, the code compiles cleanly also in C++20 mode (`/std:c++20`).
 
-This is a **header-only** library, implemented in the **[`WinReg.hpp`](WinReg/WinReg.hpp)** 
-header file.
+This is a **header-only** C++ library (clients should include the main public header `WinReg/WinReg.hpp`).
+
+If you use Visual Studio, you can configure the IDE to find the library headers using the standard way:
+
+**Solution Explorer &rarr; right-click the project &rarr; Properties &rarr; Configuration Properties &rarr;
+C/C++ &rarr; General &rarr; Additional Include Directories.**
+
+Then click the drop-down next to **Additional Include Directories &rarr; Edit...**
+
+and add the path, for example: `$(SolutionDir)WinReg\Include`
+
+(Note that there is no backslash after `$(SolutionDir)`)
+
+![Visual Studio Configuration](Visual_Studio_Include_Directory_Settings.png)
+
 
 `WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
@@ -181,12 +194,16 @@ You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
 
 The library stuff lives under the `winreg` namespace.
 
-See the [**`WinReg.hpp`**](WinReg/WinReg.hpp) header for more details and **documentation**.
-
 Thanks to everyone who contributed to this project with some additional features and constructive 
 comments and suggestions.
 
 ---
+
+
+## Improvements in v7.0.0
+
+- Split the single huge header WinReg.hpp into smaller headers.
+
 
 ## Improvements in v6.5.1
 
