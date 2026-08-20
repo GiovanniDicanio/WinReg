@@ -1,4 +1,4 @@
-# WinReg v7.0.1
+# WinReg v8.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -20,19 +20,18 @@ etc.).
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
-| Win32 Registry Type  | C++ Type                     |
-| -------------------- |:----------------------------:| 
-| `REG_DWORD`          | `DWORD`                      |
-| `REG_QWORD`          | `ULONGLONG`                  |
-| `REG_SZ`             | `std::wstring`               |
-| `REG_EXPAND_SZ`      | `std::wstring`               |
-| `REG_MULTI_SZ`       | `std::vector<std::wstring>`  |
-| `REG_BINARY`         | `std::vector<BYTE>`          |
+| Win32 Registry Type  | C++ Type                                                  |
+| -------------------- |:---------------------------------------------------------:|
+| `REG_DWORD`          | `DWORD`                                                   |
+| `REG_QWORD`          | `ULONGLONG`                                               |
+| `REG_SZ`             | `std::wstring`                                            |
+| `REG_EXPAND_SZ`      | `std::wstring`                                            |
+| `REG_MULTI_SZ`       | `std::vector<std::wstring>`                               |
+| `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (input-only) |
 
-This code is currently developed using **Visual Studio 2022** with **C++17** features enabled 
-(`/std:c++17`). I have no longer tested the code with previous compilers. 
-The code compiles cleanly at warning level 4 (`/W4`) in both 32-bit and 64-bit builds.
-Moreover, the code compiles cleanly also in C++20 mode (`/std:c++20`).
+This code is currently developed using **Visual Studio 2022** with **C++20** features enabled 
+(`/std:c++20`). I have no longer tested the code with previous compilers. 
+The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
 
 This is a **header-only** C++ library (clients should include the main public header `WinReg/WinReg.hpp`).
 
@@ -116,7 +115,7 @@ for (const auto & v : values)
 }
 ```
 
-You can simplify the above iteration code using C++17 structured bindings, as well:
+You can simplify the above iteration code using structured bindings, as well:
 
 ```c++
 auto values = key.EnumValues();
@@ -200,19 +199,9 @@ comments and suggestions.
 ---
 
 
-## Improvements in v7.0.1
+## Improvements in v8.0.0
 
-- Split the single huge monolithic header `WinReg.hpp` into smaller headers (the library is still header-only).
-- Improved the `RegExpected<T>` implementation.
-
-
-## Improvements in v6.5.1
-
-- Upgraded IDE from Visual Studio 2019 to Visual Studio 2022.
-- Use the more specific `winreg_internal` name for private/internal namespace, instead of the more general `details` 
-  (which is safer and more robust in case of clients doing `using namespace winreg;`).
-- Fixed bugs of `RegKey::LoadKey/TryLoadKey` failing because the handle is nulled-before-use via `Close` call.
-- Fixed `RegKey` move-assignment implementation (removed bogus extra condition `... && (m_hKey != other.m_hKey)`).
-- Added a comment note clarifying a potential TOCTOU race condition inherent to the Win32 registry enumeration API 
-  and the `RegKey` enumeration methods `EnumSubKeys/EnumValues/TryEnumSubKeys/TryEnumValues`.
+- Moved the codebase to C++20.
+- Added `std::span<const BYTE>` overloads for some `RegKey` methods.
+- Used spaceship operator for comparing `RegKey` objects.
 
