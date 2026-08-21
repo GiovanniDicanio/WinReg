@@ -33,7 +33,7 @@ This code is currently developed using **Visual Studio 2022** with **C++20** fea
 (`/std:c++20`). I have no longer tested the code with previous compilers. 
 The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
 
-This is a **header-only** C++ library (clients should include the main public header `WinReg/WinReg.hpp`).
+This is a **header-only** C++ library (clients should include the main public header **`WinReg/WinReg.hpp`**).
 
 If you use Visual Studio, you can configure the IDE to find the library headers using the standard way:
 
@@ -201,7 +201,7 @@ comments and suggestions.
 
 ## Improvements in v8.0.0
 
-- Moved the codebase to C++20.
-- Added `std::span<const BYTE>` overloads for some `RegKey` methods.
-- Used spaceship operator for comparing `RegKey` objects.
+- Moved the codebase to C++20 (this is the first release targeting C++20).
+- Added `std::span<const BYTE>` overloads for some `RegKey` methods, like `SetBinaryValue` and `TrySetBinaryValue`.
+- Used "spaceship operator" for comparing `RegKey` objects instead of previous "classic" relational operator overloads.
 
