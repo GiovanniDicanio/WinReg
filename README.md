@@ -211,6 +211,7 @@ comments and suggestions.
   Moreover, the list of recognized registry types has been extended.
 - `SetQwordValue()` and `TrySetQwordValue()` now get the `ULONGLONG` data parameter by value 
   instead of `const&`.
+- Get rid of the trailing '\r\n' returned by `FormatMessage()` in `RegResult::ErrorMessage()`.
 
 
 ## Improvements in v8.0.0
