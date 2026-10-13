@@ -16,8 +16,7 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
-#include <compare>          // std::strong_ordering
-#include <functional>       // std::less
+#include <compare>          // std::compare_three_way, std::strong_ordering
 #include <memory>           // std::unique_ptr, std::make_unique
 #include <span>             // std::span
 #include <string>           // std::string, std::wstring
@@ -488,14 +487,22 @@ public:
 
 
     //
-    // Relational comparison operators are overloaded as non-members.
-    // In C++20 we can simply implement operator== and operator<=>,
-    // and the compiler will automatically synthesize all the remaining
+    // Relational comparison operators are overloaded as friend non-members.
+    //
+    // In C++20 we can simply use the default implementation of operator==
+    // (which does a member-wise equality comparison), and implement operator<=>
+    // using a simple invocation to std::compare_three_way{}.
+    // The compiler will automatically synthesize all the remaining
     // relational operators (e.g. !=, <, <=, >, >=).
     //
 
-    friend bool operator==(const RegKey& lhs, const RegKey& rhs) noexcept;
-    friend std::strong_ordering operator<=>(const RegKey& lhs, const RegKey& rhs) noexcept;
+    [[nodiscard]] friend bool operator==(const RegKey&, const RegKey&) noexcept = default;
+
+    [[nodiscard]] friend std::strong_ordering operator<=>(const RegKey& lhs,
+                                                          const RegKey& rhs) noexcept
+    {
+        return std::compare_three_way{}(lhs.m_hKey, rhs.m_hKey);
+    }
 
 
     //
@@ -506,35 +513,6 @@ private:
     // The wrapped registry key handle
     HKEY m_hKey{ nullptr };
 };
-
-
-
-//------------------------------------------------------------------------------
-//          Overloads of relational comparison operators for RegKey
-//------------------------------------------------------------------------------
-
-inline [[nodiscard]] bool operator==(const RegKey& lhs, const RegKey& rhs) noexcept
-{
-    return lhs.m_hKey == rhs.m_hKey;
-}
-
-
-inline [[nodiscard]] std::strong_ordering operator<=>(const RegKey& lhs, const RegKey& rhs) noexcept
-{
-    const std::less<HKEY> less;
-
-    if (less(lhs.m_hKey, rhs.m_hKey))
-    {
-        return std::strong_ordering::less;
-    }
-
-    if (less(rhs.m_hKey, lhs.m_hKey))
-    {
-        return std::strong_ordering::greater;
-    }
-
-    return std::strong_ordering::equal;
-}
 
 
 

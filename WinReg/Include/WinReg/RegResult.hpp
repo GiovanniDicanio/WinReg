@@ -60,6 +60,12 @@ public:
     // using the given input language identifier
     [[nodiscard]] std::wstring ErrorMessage(DWORD languageId) const;
 
+
+    // Just implement equality for RegResult;
+    // "ordering error codes" has no real meaning.
+    [[nodiscard]] friend bool operator==(const RegResult&, const RegResult&) noexcept = default;
+
+
 private:
     // Error code returned by Windows Registry C API;
     // default initialized to success code.
