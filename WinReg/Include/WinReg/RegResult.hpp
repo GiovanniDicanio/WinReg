@@ -16,6 +16,7 @@
 #include <Windows.h>        // Windows Platform SDK
 
 #include <string>           // std::wstring
+#include <string_view>      // std::wstring_view
 
 #include "WinReg/internal/ScopedLocalFree.hpp"
 
@@ -118,7 +119,7 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 {
     // Invoke FormatMessage() to retrieve the error message from Windows
     winreg_internal::ScopedLocalFree<wchar_t> messagePtr;
-    DWORD retCode = ::FormatMessageW(
+    const DWORD length = ::FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -129,15 +130,24 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
         0,
         nullptr
     );
-    if (retCode == 0)
+    if (length == 0)
     {
         // FormatMessage failed: return an empty string
         return std::wstring{};
     }
 
-    // Safely copy the C-string returned by FormatMessage() into a std::wstring object,
-    // and return it back to the caller.
-    return std::wstring{ messagePtr.Get() };
+    // FormatMessage() returns error messages terminating with '\r\n'.
+    // Get rid of those characters (and potential other trailing space-like characters, too).
+    const std::wstring_view message{ messagePtr.Get(), length };
+    const size_t lastNonSpace = message.find_last_not_of(L" \t\r\n");
+    if (lastNonSpace == std::wstring_view::npos)
+    {
+        // This is not expected, as that would mean that the whole string
+        // returned by FormatMessage() is made only by spaces...
+        return std::wstring{};
+    }
+
+    return std::wstring{ message.substr(0, lastNonSpace + 1) };
 }
 
 
