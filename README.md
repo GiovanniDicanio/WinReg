@@ -199,6 +199,20 @@ comments and suggestions.
 ---
 
 
+## Improvements in v8.1.0
+
+- Fixed wrong positions of `[[nodiscard]]` in some places 
+  (see e.g. https://giodicanio.com/2026/10/12/where-to-put-nodiscard-a-silent-trap-with-msvc/).
+- Furtherly simplified comparison code using new C++20 features.
+- Fixed `ConnectRegistry()` and `TryConnectRegistry()`, invoking `Close()` only _after_ 
+  the connection is successfully opened.
+- `RegTypeToString()` now returns a `const wchar_t*` instead of creating new `wstring` objects
+  every time it's invoked (with potential dynamic memory allocations). 
+  Moreover, the list of recognized registry types has been extended.
+- `SetQwordValue()` and `TrySetQwordValue()` now get the `ULONGLONG` data parameter by value 
+  instead of `const&`.
+
+
 ## Improvements in v8.0.0
 
 - Moved the codebase to C++20 (this is the first release targeting C++20).
