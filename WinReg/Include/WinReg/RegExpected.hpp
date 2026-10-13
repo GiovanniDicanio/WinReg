@@ -16,7 +16,7 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
-#include <type_traits>      // std::is_same_v, std::remove_cv_t
+#include <type_traits>      // std::is_same_v
 #include <utility>          // std::move
 #include <variant>          // std::variant
 
@@ -39,7 +39,7 @@ class RegExpected
 public:
 
     static_assert(
-        !std::is_same_v<std::remove_cv_t<T>, RegResult>,
+        !std::is_same_v<T, RegResult>,
         "RegExpected<T>: T must not be RegResult.");
 
 
@@ -48,14 +48,14 @@ public:
     //
 
     // Build a RegExpected storing a valid value
-    [[nodiscard]] static RegExpected MakeSuccess(const T& value);
+    static [[nodiscard]] RegExpected MakeSuccess(const T& value);
 
     // Build a RegExpected storing a valid value
     // (optimized for move semantics)
-    [[nodiscard]] static RegExpected MakeSuccess(T&& value);
+    static [[nodiscard]] RegExpected MakeSuccess(T&& value);
 
     // Build a RegExpected storing an error code
-    [[nodiscard]] static RegExpected MakeError(RegResult error);
+    static [[nodiscard]] RegExpected MakeError(RegResult error);
 
 
 
@@ -88,7 +88,7 @@ public:
 
     // Helper function: Builds a RegExpected object that stores a RegResult
     // containing a Windows Registry API error code expressed as a "raw" LSTATUS.
-    [[nodiscard]] static RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode);
+    static [[nodiscard]] RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode);
 
 
 private:

@@ -42,9 +42,8 @@
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
 //
 // IDE/Compiler: Visual Studio 2022
-// C++ Language Standard: C++17 (/std:c++17)
-// Code compiles cleanly at warning level 4 (/W4) on both 32-bit and 64-bit builds,
-// also in C++20 mode (/std:c++20).
+// C++ Language Standard: C++20 (/std:c++20)
+// Code compiles cleanly at warning level 4 (/W4) on 64-bit builds.
 //
 // Requires building in Unicode mode (which has been the default since VS2005).
 //

@@ -16,7 +16,10 @@
 #include <Windows.h>        // Windows Platform SDK
 #include <crtdbg.h>         // _ASSERTE
 
+#include <compare>          // std::strong_ordering
+#include <functional>       // std::less
 #include <memory>           // std::unique_ptr, std::make_unique
+#include <span>             // std::span
 #include <string>           // std::string, std::wstring
 #include <utility>          // std::swap, std::pair, std::move
 #include <vector>           // std::vector
@@ -217,6 +220,7 @@ public:
     void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
+    void SetBinaryValue(const std::wstring& valueName, std::span<const BYTE> data);
 
 
     //
@@ -256,6 +260,9 @@ public:
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
         const void* data,
         DWORD dataSize) noexcept;
+
+    [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
+        std::span<const BYTE> data);
 
 
     //
@@ -481,9 +488,14 @@ public:
 
 
     //
-    // Relational comparison operators are overloaded as non-members
-    // ==, !=, <, <=, >, >=
+    // Relational comparison operators are overloaded as non-members.
+    // In C++20 we can simply implement operator== and operator<=>,
+    // and the compiler will automatically synthesize all the remaining
+    // relational operators (e.g. !=, <, <=, >, >=).
     //
+
+    friend bool operator==(const RegKey& lhs, const RegKey& rhs) noexcept;
+    friend std::strong_ordering operator<=>(const RegKey& lhs, const RegKey& rhs) noexcept;
 
 
     //
@@ -501,34 +513,27 @@ private:
 //          Overloads of relational comparison operators for RegKey
 //------------------------------------------------------------------------------
 
-inline bool operator==(const RegKey& a, const RegKey& b) noexcept
+inline [[nodiscard]] bool operator==(const RegKey& lhs, const RegKey& rhs) noexcept
 {
-    return a.Get() == b.Get();
+    return lhs.m_hKey == rhs.m_hKey;
 }
 
-inline bool operator!=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() != b.Get();
-}
 
-inline bool operator<(const RegKey& a, const RegKey& b) noexcept
+inline [[nodiscard]] std::strong_ordering operator<=>(const RegKey& lhs, const RegKey& rhs) noexcept
 {
-    return a.Get() < b.Get();
-}
+    const std::less<HKEY> less;
 
-inline bool operator<=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() <= b.Get();
-}
+    if (less(lhs.m_hKey, rhs.m_hKey))
+    {
+        return std::strong_ordering::less;
+    }
 
-inline bool operator>(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() > b.Get();
-}
+    if (less(rhs.m_hKey, lhs.m_hKey))
+    {
+        return std::strong_ordering::greater;
+    }
 
-inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() >= b.Get();
+    return std::strong_ordering::equal;
 }
 
 
@@ -956,21 +961,20 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
 {
     _ASSERTE(IsValid());
 
-    // Total data size, in bytes
+    SetBinaryValue(valueName, std::span{ data });
+}
+
+
+inline void RegKey::SetBinaryValue(
+    const std::wstring& valueName,
+    const std::span<const BYTE> data
+)
+{
+    _ASSERTE(IsValid());
+
     const DWORD dataSize = winreg_internal::SafeCastSizeToDword(data.size());
 
-    LSTATUS retCode = ::RegSetValueExW(
-        m_hKey,
-        valueName.c_str(),
-        0, // reserved
-        REG_BINARY,
-        data.data(),
-        dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write binary data value: RegSetValueExW failed." };
-    }
+    SetBinaryValue(valueName, data.data(), dataSize);
 }
 
 
@@ -1098,17 +1102,19 @@ inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
 {
     _ASSERTE(IsValid());
 
+    return TrySetBinaryValue(valueName, std::span{ data });
+}
+
+
+inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
+    const std::span<const BYTE> data)
+{
+    _ASSERTE(IsValid());
+
     // Total data size, in bytes
     const DWORD dataSize = winreg_internal::SafeCastSizeToDword(data.size());
 
-    return RegResult{ ::RegSetValueExW(
-        m_hKey,
-        valueName.c_str(),
-        0, // reserved
-        REG_BINARY,
-        data.data(),
-        dataSize
-    ) };
+    return TrySetBinaryValue(valueName, data.data(), dataSize);
 }
 
 
