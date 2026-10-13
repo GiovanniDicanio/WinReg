@@ -213,7 +213,7 @@ public:
     //
 
     void SetDwordValue(const std::wstring& valueName, DWORD data);
-    void SetQwordValue(const std::wstring& valueName, const ULONGLONG& data);
+    void SetQwordValue(const std::wstring& valueName, ULONGLONG data);
     void SetStringValue(const std::wstring& valueName, const std::wstring& data);
     void SetExpandStringValue(const std::wstring& valueName, const std::wstring& data);
     void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
@@ -228,9 +228,7 @@ public:
     //
 
     [[nodiscard]] RegResult TrySetDwordValue(const std::wstring& valueName, DWORD data) noexcept;
-
-    [[nodiscard]] RegResult TrySetQwordValue(const std::wstring& valueName,
-        const ULONGLONG& data) noexcept;
+    [[nodiscard]] RegResult TrySetQwordValue(const std::wstring& valueName, ULONGLONG data) noexcept;
 
     [[nodiscard]] RegResult TrySetStringValue(const std::wstring& valueName,
         const std::wstring& data);
@@ -483,7 +481,7 @@ public:
 
 
     // Return a string representation of Windows registry types
-    [[nodiscard]] static std::wstring RegTypeToString(DWORD regType);
+    [[nodiscard]] static const wchar_t* RegTypeToString(DWORD regType);
 
 
     //
@@ -844,7 +842,7 @@ inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD dat
 }
 
 
-inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG& data)
+inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG data)
 {
     _ASSERTE(IsValid());
 
@@ -995,7 +993,7 @@ inline RegResult RegKey::TrySetDwordValue(const std::wstring& valueName, const D
 
 
 inline RegResult RegKey::TrySetQwordValue(const std::wstring& valueName,
-    const ULONGLONG& data) noexcept
+                                          const ULONGLONG data) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -2652,15 +2650,16 @@ inline RegResult RegKey::TryDisableReflectionKey() noexcept
 
 inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY hKeyPredefined)
 {
-    // Safely close any previously opened key
-    Close();
-
+    // Try the connection
     HKEY hKeyResult = nullptr;
     LSTATUS retCode = ::RegConnectRegistryW(machineName.c_str(), hKeyPredefined, &hKeyResult);
     if (retCode != ERROR_SUCCESS)
     {
         throw RegException{ retCode, "RegConnectRegistryW failed." };
     }
+
+    // Safely close any previously opened key
+    Close();
 
     // Take ownership of the result key
     m_hKey = hKeyResult;
@@ -2670,15 +2669,16 @@ inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY 
 inline RegResult RegKey::TryConnectRegistry(const std::wstring& machineName,
     const HKEY hKeyPredefined) noexcept
 {
-    // Safely close any previously opened key
-    Close();
-
+    // Try the connection
     HKEY hKeyResult = nullptr;
     RegResult retCode{ ::RegConnectRegistryW(machineName.c_str(), hKeyPredefined, &hKeyResult) };
     if (retCode.Failed())
     {
         return retCode;
     }
+
+    // Safely close any previously opened key
+    Close();
 
     // Take ownership of the result key
     m_hKey = hKeyResult;
@@ -2688,18 +2688,23 @@ inline RegResult RegKey::TryConnectRegistry(const std::wstring& machineName,
 }
 
 
-inline std::wstring RegKey::RegTypeToString(const DWORD regType)
+inline const wchar_t* RegKey::RegTypeToString(const DWORD regType)
 {
     switch (regType)
     {
-    case REG_SZ:        return L"REG_SZ";
-    case REG_EXPAND_SZ: return L"REG_EXPAND_SZ";
-    case REG_MULTI_SZ:  return L"REG_MULTI_SZ";
-    case REG_DWORD:     return L"REG_DWORD";
-    case REG_QWORD:     return L"REG_QWORD";
-    case REG_BINARY:    return L"REG_BINARY";
+        case REG_SZ:                return L"REG_SZ";
+        case REG_EXPAND_SZ:         return L"REG_EXPAND_SZ";
+        case REG_MULTI_SZ:          return L"REG_MULTI_SZ";
+        case REG_DWORD:             return L"REG_DWORD";
+        case REG_QWORD:             return L"REG_QWORD";
+        case REG_BINARY:            return L"REG_BINARY";
 
-    default:            return L"Unknown/unsupported registry type";
+        case REG_NONE:              return L"REG_NONE";
+        case REG_LINK:              return L"REG_LINK";
+        case REG_RESOURCE_LIST:     return L"REG_RESOURCE_LIST";
+        case REG_DWORD_BIG_ENDIAN:  return L"REG_DWORD_BIG_ENDIAN";
+
+        default:                    return L"Unknown/unsupported registry type";
     }
 }
 
