@@ -211,7 +211,12 @@ comments and suggestions.
   Moreover, the list of recognized registry types has been extended.
 - `SetQwordValue()` and `TrySetQwordValue()` now get the `ULONGLONG` data parameter by value 
   instead of `const&`.
-- Get rid of the trailing '\r\n' returned by `FormatMessage()` in `RegResult::ErrorMessage()`.
+- Get rid of the trailing `'\r\n'` returned by `FormatMessage()` in `RegResult::ErrorMessage()`.
+- Add `_ASSERTE(IsValid())` in places like `QueryReflectionKey()` and similar reflection methods
+  where it was missing.
+- Added a safety check in `ScopedLocalFree::AddressOf()` to free any allocated memory 
+  _before_ returning write access to the pointer member.
+- Simplified the `InfoKey` structure code using member initialization.
 
 
 ## Improvements in v8.0.0
