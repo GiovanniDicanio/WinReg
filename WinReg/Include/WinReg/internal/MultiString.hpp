@@ -14,7 +14,6 @@
 
 
 #include <Windows.h>        // Windows Platform SDK
-
 #include <string.h>         // wcslen
 
 #include <string>           // std::wstring
@@ -134,11 +133,34 @@ inline bool IsDoubleNullTerminated(const std::vector<wchar_t>& data)
 
 inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data)
 {
+    //
+    // Check some edge cases, like an empty vector or a vector containing only L'\0'.
+    // These can be used as an empty form for a double-NUL-terminated string.
+    //
+
+    if (data.empty() ||                                 // empty vector (zero-length data, tolerated)
+        ((data.size() == 1) && (data[0] == L'\0')))     // lone L'\0' (documented empty REG_MULTI_SZ form)
+    {
+        // Return an empty vector
+        return {};
+    }
+
     // Make sure that there are two terminating L'\0's at the end of the sequence
     if (!IsDoubleNullTerminated(data))
     {
         throw RegException{ ERROR_INVALID_DATA, "Not a double-null terminated string." };
     }
+
+    // If this is an empty sequence of two L'\0's: "\0\0" --> return an empty vector
+    if (data.size() == 2)
+    {
+        return {};
+    }
+
+
+    //
+    // Size 3 or more, enter the parsing loop:
+    //
 
     // Parse the double-NUL-terminated string into a vector<wstring>,
     // which will be returned to the caller
