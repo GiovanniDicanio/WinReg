@@ -332,24 +332,9 @@ public:
     // Information about a registry key (retrieved by QueryInfoKey)
     struct InfoKey
     {
-        DWORD    NumberOfSubKeys;
-        DWORD    NumberOfValues;
-        FILETIME LastWriteTime;
-
-        // Clear the structure fields
-        InfoKey() noexcept
-            : NumberOfSubKeys{ 0 }
-            , NumberOfValues{ 0 }
-        {
-            LastWriteTime.dwHighDateTime = LastWriteTime.dwLowDateTime = 0;
-        }
-
-        InfoKey(DWORD numberOfSubKeys, DWORD numberOfValues, FILETIME lastWriteTime) noexcept
-            : NumberOfSubKeys{ numberOfSubKeys }
-            , NumberOfValues{ numberOfValues }
-            , LastWriteTime{ lastWriteTime }
-        {
-        }
+        DWORD    NumberOfSubKeys{ 0 };
+        DWORD    NumberOfValues{ 0 };
+        FILETIME LastWriteTime{};
     };
 
     // Retrieve information about the registry key
@@ -2438,6 +2423,8 @@ inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
 
 inline RegKey::KeyReflection RegKey::QueryReflectionKey() const
 {
+    _ASSERTE(IsValid());
+
     BOOL isReflectionDisabled = FALSE;
     LSTATUS retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
     if (retCode != ERROR_SUCCESS)
@@ -2452,6 +2439,8 @@ inline RegKey::KeyReflection RegKey::QueryReflectionKey() const
 
 inline RegExpected<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
 {
+    _ASSERTE(IsValid());
+
     using ReturnType = RegKey::KeyReflection;
 
     BOOL isReflectionDisabled = FALSE;
@@ -2618,6 +2607,8 @@ inline RegResult RegKey::TrySaveKey(
 
 inline void RegKey::EnableReflectionKey()
 {
+    _ASSERTE(IsValid());
+
     LSTATUS retCode = ::RegEnableReflectionKey(m_hKey);
     if (retCode != ERROR_SUCCESS)
     {
@@ -2628,12 +2619,16 @@ inline void RegKey::EnableReflectionKey()
 
 inline RegResult RegKey::TryEnableReflectionKey() noexcept
 {
+    _ASSERTE(IsValid());
+
     return RegResult{ ::RegEnableReflectionKey(m_hKey) };
 }
 
 
 inline void RegKey::DisableReflectionKey()
 {
+    _ASSERTE(IsValid());
+
     LSTATUS retCode = ::RegDisableReflectionKey(m_hKey);
     if (retCode != ERROR_SUCCESS)
     {
@@ -2644,6 +2639,8 @@ inline void RegKey::DisableReflectionKey()
 
 inline RegResult RegKey::TryDisableReflectionKey() noexcept
 {
+    _ASSERTE(IsValid());
+
     return RegResult{ ::RegDisableReflectionKey(m_hKey) };
 }
 

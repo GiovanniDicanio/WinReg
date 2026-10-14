@@ -63,6 +63,11 @@ public:
     // Writable access to the wrapped pointer
     [[nodiscard]] T** AddressOf() noexcept
     {
+        // NOTE: To make the method more robust and safer,
+        // *before* returning the address of the pointer member,
+        // I *safely* free the associated dynamic memory (if any), to avoid memory leaks.
+        Free();
+
         return &m_ptr;
     }
 
