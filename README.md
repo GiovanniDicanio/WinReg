@@ -217,6 +217,7 @@ comments and suggestions.
 - Added a safety check in `ScopedLocalFree::AddressOf()` to free any allocated memory 
   _before_ returning write access to the pointer member.
 - Simplified the `InfoKey` structure code using member initialization.
+- Simplified code using C++20's `std::in_range()` instead of custom code in `SafeCast.hpp`.
 
 
 ## Improvements in v8.0.0
