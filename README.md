@@ -1,4 +1,4 @@
-# WinReg v8.1.0
+# WinReg v10.0.0
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -56,7 +56,7 @@ The library exposes four main classes:
 * `RegKey`: a tiny efficient wrapper around raw Win32 `HKEY` handles
 * `RegException`: an exception class to signal error conditions
 * `RegResult`: a tiny wrapper around Windows Registry API `LSTATUS` error codes, 
-returned by some `Try` methods (like `RegKey::TryOpen`)
+returned by some `Try` methods (like `RegKey::TryOpen()`)
 * `RegExpected<T>`: an object that contains a value of type `T` 
 (e.g. a `DWORD` read from the registry) on success, 
 or an instance of a `RegResult`-wrapped return code on error
@@ -73,6 +73,9 @@ DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
 wstring s  = key.GetStringValue(L"SomeStringValue");
 ```
 
+**NOTE**: If the specified registry key does _not_ exist, a **new** one is _created_ by the constructor.
+If you want open-existing-only behavior, consider using the `Open()` or `TryOpen()` methods.
+
 You can also open a registry key using a two-step construction process:
 
 ```c++
@@ -81,7 +84,7 @@ key.Open(HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey");
 ```
 
 The above code will throw an exception on error. If you prefer to check return codes, you can do 
-that as well, using a `TryXxxx` method, e.g.:
+that as well, using a `TryXxxx()` method, e.g.:
 
 ```c++
 RegKey key;
@@ -130,7 +133,7 @@ for (const auto & [valueName, valueType] : values)
 ```
 
 You can also check if a key contains a given value or even a subkey, invoking the
-`RegKey::ContainsValue` and `RegKey::ContainsSubKey` methods, e.g.:
+`RegKey::ContainsValue()` and `RegKey::ContainsSubKey()` methods, e.g.:
 
 ```c++
 if (key.ContainsValue(L"Connie"))
@@ -140,7 +143,7 @@ if (key.ContainsValue(L"Connie"))
 }
 ```
 
-You can also use the `RegKey::TryGet...Value` methods, that return `RegExpected<T>` 
+You can also use the `RegKey::TryGet...Value()` methods, that return `RegExpected<T>` 
 instead of throwing an exception on error:
 
 ```c++
@@ -173,19 +176,19 @@ else
 
 The library also supports reading raw binary data for Registry types that are unsupported
 or less documented (e.g. `REG_RESOURCE_LIST`, `REG_FULL_RESOURCE_DESCRIPTOR`, etc.),
-via the `RegKey::GetRawValue` and `RegKey::TryGetRawValue` methods.
+via the `RegKey::GetRawValue()` and `RegKey::TryGetRawValue()` methods.
 
 
-**Version Note**: WinReg v5.1.1 is the latest version in which the `TryGetXxxValue` methods return 
+**Version Note**: WinReg v5.1.1 is the latest version in which the `TryGetXxxValue()` methods return 
 `std::optional<T>` (discarding the information about the error code).
-Starting from v6.0.0, the `TryGetXxxxValue` methods return `RegExpected<T>` (which keeps 
+Starting from v6.0.0, the `TryGetXxxxValue()` methods return `RegExpected<T>` (which keeps 
 the error information on failure).
 
 
 Note that many methods are available in _two forms_: one that _throws an exception_ of type 
-`RegException` on error (e.g. `RegKey::Open`), and another that _returns an error status object_ 
-of type `RegResult` (e.g. `RegKey::TryOpen`) instead of throwing an exception.
-In addition, as indicated above, some methods like the `RegKey::TryGet...Value` ones return 
+`RegException` on error (e.g. `RegKey::Open()`), and another that _returns an error status object_ 
+of type `RegResult` (e.g. `RegKey::TryOpen()`) instead of throwing an exception.
+In addition, as indicated above, some methods like the `RegKey::TryGet...Value()` ones return 
 `RegExpected` instead of throwing exceptions; in case of errors, the returned `RegExpected` 
 contains a `RegResult` storing the error code.
 
@@ -199,7 +202,7 @@ comments and suggestions.
 ---
 
 
-## Improvements in v8.1.0
+## Improvements in v10.0.0
 
 - Fixed wrong positions of `[[nodiscard]]` in some places 
   (see e.g. https://giodicanio.com/2026/10/12/where-to-put-nodiscard-a-silent-trap-with-msvc/).
@@ -218,11 +221,12 @@ comments and suggestions.
   _before_ returning write access to the pointer member.
 - Simplified the `InfoKey` structure code using member initialization.
 - Simplified code using C++20's `std::in_range()` instead of custom code in `SafeCast.hpp`.
+- Improved parsing behavior of double-NUL-terminated strings, including some edge cases.
 
 
 ## Improvements in v8.0.0
 
 - Moved the codebase to C++20 (this is the first release targeting C++20).
-- Added `std::span<const BYTE>` overloads for some `RegKey` methods, like `SetBinaryValue` and `TrySetBinaryValue`.
+- Added `std::span<const BYTE>` overloads for some `RegKey` methods, like `SetBinaryValue()` and `TrySetBinaryValue()`.
 - Used "spaceship operator" for comparing `RegKey` objects instead of previous "classic" relational operator overloads.
 
