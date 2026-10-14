@@ -388,8 +388,16 @@ public:
     // Check if the current key contains the specified value
     [[nodiscard]] bool ContainsValue(const std::wstring& valueName) const;
 
-    // Check if the current key contains the specified sub-key
-    [[nodiscard]] bool ContainsSubKey(const std::wstring& subKey) const;
+    // Check if the current key contains the specified sub-key.
+    //
+    // NOTE:
+    // wow64Flag must match the registry view used to open this key.
+    // The default mode is opening the sub-key with the KEY_WOW64_64KEY flag,
+    // as done in other places in the library, like the constructors.
+    // Other options are KEY_WOW64_32KEY, or 0 for the default view.
+    //
+    [[nodiscard]] bool ContainsSubKey(const std::wstring& subKey,
+                                      REGSAM wow64Flag = KEY_WOW64_64KEY) const;
 
 
     //
@@ -418,8 +426,15 @@ public:
     // Check if the current key contains the specified value
     [[nodiscard]] RegExpected<bool> TryContainsValue(const std::wstring& valueName) const;
 
-    // Check if the current key contains the specified sub-key
-    [[nodiscard]] RegExpected<bool> TryContainsSubKey(const std::wstring& subKey) const;
+    // Check if the current key contains the specified sub-key.
+    // NOTE:
+    // wow64Flag must match the registry view used to open this key.
+    // The default mode is opening the sub-key with the KEY_WOW64_64KEY flag,
+    // as done in other places in the library, like the constructors.
+    // Other options are KEY_WOW64_32KEY, or 0 for the default view.
+    //
+    [[nodiscard]] RegExpected<bool> TryContainsSubKey(const std::wstring& subKey,
+                                                      REGSAM wow64Flag = KEY_WOW64_64KEY) const;
 
 
     //
@@ -2053,18 +2068,27 @@ inline bool RegKey::ContainsValue(const std::wstring& valueName) const
 }
 
 
-inline bool RegKey::ContainsSubKey(const std::wstring& subKey) const
+inline bool RegKey::ContainsSubKey(const std::wstring& subKey,
+                                   const REGSAM wow64Flag /* = KEY_WOW64_64KEY */) const
 {
     _ASSERTE(IsValid());
 
+    // Only the WOW64 view bits are meaningful here
+    _ASSERTE((wow64Flag & ~(KEY_WOW64_64KEY | KEY_WOW64_32KEY)) == 0);
+
+
+    //
     // Let's try and open the specified subKey, then check the return code
     // of RegOpenKeyExW to figure out if the subKey exists or not.
+    //
+
     HKEY hSubKey = nullptr;
+    const REGSAM desiredAccess = KEY_QUERY_VALUE | wow64Flag;
     LSTATUS retCode = ::RegOpenKeyExW(
         m_hKey,
         subKey.c_str(),
         0,
-        KEY_READ,
+        desiredAccess,
         &hSubKey
     );
     if (retCode == ERROR_SUCCESS)
@@ -2081,6 +2105,29 @@ inline bool RegKey::ContainsSubKey(const std::wstring& subKey) const
     {
         // The specified sub-key does not exist
         return false;
+    }
+    //
+    // NOTE: ERROR_ACCESS_DENIED
+    //
+    // There could be a special case for ERROR_ACCESS_DENIED:
+    // The sub-key could exist, but the caller can't open it.
+    //
+    // That's because name resolution happens before the access check (ACL) on the final key,
+    // so a non-existent sub-key would report ERROR_FILE_NOT_FOUND instead.
+    // So, in this case I could still return true (= the sub-key exists) back to the caller.
+    //
+    // I read that an exception to this could be:
+    // a token without SeChangeNotifyPrivilege could be denied on an intermediate key.
+    //
+    // So, even with ERROR_ACCESS_DENIED the sub-key almost certainly exists.
+    //
+    // Anyway, that requires more testing.
+    //
+    // TODO: More test on this special case of ERROR_ACCESS_DENIED.
+    //
+    else if (retCode == ERROR_ACCESS_DENIED)
+    {
+        return true;
     }
     else
     {
@@ -2276,18 +2323,29 @@ inline RegExpected<bool> RegKey::TryContainsValue(const std::wstring& valueName)
 }
 
 
-inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey) const
+inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey,
+                                                   REGSAM wow64Flag /* = KEY_WOW64_64KEY */) const
 {
     _ASSERTE(IsValid());
 
+    // Only the WOW64 view bits are meaningful here
+    _ASSERTE((wow64Flag & ~(KEY_WOW64_64KEY | KEY_WOW64_32KEY)) == 0);
+
+
+    //
     // Let's try and open the specified subKey, then check the return code
     // of RegOpenKeyExW to figure out if the subKey exists or not.
+    //
+
     HKEY hSubKey = nullptr;
+
+    const REGSAM desiredAccess = KEY_QUERY_VALUE | wow64Flag;
+
     LSTATUS retCode = ::RegOpenKeyExW(
         m_hKey,
         subKey.c_str(),
         0,
-        KEY_READ,
+        desiredAccess,
         &hSubKey
     );
     if (retCode == ERROR_SUCCESS)
@@ -2304,6 +2362,29 @@ inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey) c
     {
         // The specified sub-key does not exist
         return RegExpected<bool>::MakeSuccess( false );
+    }
+    //
+    // NOTE: ERROR_ACCESS_DENIED
+    //
+    // There could be a special case for ERROR_ACCESS_DENIED:
+    // The sub-key could exist, but the caller can't open it.
+    //
+    // That's because name resolution happens before the access check (ACL) on the final key,
+    // so a non-existent sub-key would report ERROR_FILE_NOT_FOUND instead.
+    // So, in this case I could still return true (= the sub-key exists) back to the caller.
+    //
+    // I read that an exception to this could be:
+    // a token without SeChangeNotifyPrivilege could be denied on an intermediate key.
+    //
+    // So, even with ERROR_ACCESS_DENIED the sub-key almost certainly exists.
+    //
+    // Anyway, that requires more testing.
+    //
+    // TODO: More test on this special case of ERROR_ACCESS_DENIED.
+    //
+    else if (retCode == ERROR_ACCESS_DENIED)
+    {
+        return RegExpected<bool>::MakeSuccess( true );
     }
     else
     {

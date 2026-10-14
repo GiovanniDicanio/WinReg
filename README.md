@@ -222,6 +222,7 @@ comments and suggestions.
 - Simplified the `InfoKey` structure code using member initialization.
 - Simplified code using C++20's `std::in_range()` instead of custom code in `SafeCast.hpp`.
 - Improved parsing behavior of double-NUL-terminated strings, including some edge cases.
+- Improved `RegKey`'s methods `ContainsSubKey()` and `TryContainsSubKey()`.
 
 
 ## Improvements in v8.0.0
