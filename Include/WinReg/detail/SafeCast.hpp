@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_DETAIL_SAFECAST_HPP
+#define GIOVANNI_DICANIO_WINREG_DETAIL_SAFECAST_HPP
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -147,3 +148,5 @@ namespace detail
 
 } // namespace winreg
 
+
+#endif // GIOVANNI_DICANIO_WINREG_DETAIL_SAFECAST_HPP

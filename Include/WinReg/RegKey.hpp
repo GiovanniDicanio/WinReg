@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_REGKEY_HPP
+#define GIOVANNI_DICANIO_WINREG_REGKEY_HPP
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -556,3 +557,6 @@ private:
 
 
 #include "RegKey_impl.hpp"      // Inline implementations
+
+
+#endif // GIOVANNI_DICANIO_WINREG_REGKEY_HPP

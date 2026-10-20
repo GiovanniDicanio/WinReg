@@ -8,8 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
+#ifndef GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP
+#define GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP
 
 //
 // NOTE: This file is included by "RegKey.hpp" and contains the inline implementations
@@ -3202,3 +3202,6 @@ inline const wchar_t* RegKey::RegTypeToString(const DWORD regType)
 
 
 } // namespace winreg
+
+
+#endif // GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP

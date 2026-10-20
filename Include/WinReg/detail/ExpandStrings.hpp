@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_DETAIL_EXPANDSTRINGS_HPP
+#define GIOVANNI_DICANIO_WINREG_DETAIL_EXPANDSTRINGS_HPP
 
 
 #include <Windows.h>            // Windows Platform SDK
@@ -123,3 +124,6 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
 } // namespace detail
 
 } // namespace winreg
+
+
+#endif // GIOVANNI_DICANIO_WINREG_DETAIL_EXPANDSTRINGS_HPP

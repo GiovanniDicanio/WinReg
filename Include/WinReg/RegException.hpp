@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_REGEXCEPTION_HPP
+#define GIOVANNI_DICANIO_WINREG_REGEXCEPTION_HPP
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -50,3 +51,5 @@ inline RegException::RegException(const LSTATUS errorCode, const std::string& me
 
 } // namespace winreg
 
+
+#endif // GIOVANNI_DICANIO_WINREG_REGEXCEPTION_HPP

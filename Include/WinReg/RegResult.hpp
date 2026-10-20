@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_REGRESULT_HPP
+#define GIOVANNI_DICANIO_WINREG_REGRESULT_HPP
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -161,3 +162,6 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 
 
 } // namespace winreg
+
+
+#endif // GIOVANNI_DICANIO_WINREG_REGRESULT_HPP

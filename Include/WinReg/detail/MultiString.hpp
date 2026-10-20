@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_DETAIL_MULTISTRING_HPP
+#define GIOVANNI_DICANIO_WINREG_DETAIL_MULTISTRING_HPP
 
 
 #include <Windows.h>            // Windows Platform SDK
@@ -264,3 +265,5 @@ inline RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vec
 
 } // namespace winreg
 
+
+#endif // GIOVANNI_DICANIO_WINREG_DETAIL_MULTISTRING_HPP

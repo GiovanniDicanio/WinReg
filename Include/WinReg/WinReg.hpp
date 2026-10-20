@@ -11,7 +11,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_WINREG_HPP
+#define GIOVANNI_DICANIO_WINREG_WINREG_HPP
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,3 +97,5 @@
 #include "RegExpected.hpp"
 #include "RegResult.hpp"
 
+
+#endif // GIOVANNI_DICANIO_WINREG_WINREG_HPP
