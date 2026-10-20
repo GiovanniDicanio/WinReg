@@ -8,9 +8,7 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef GIOVANNI_DICANIO_WINREG_REGRESULT_HPP_INCLUDED
-#define GIOVANNI_DICANIO_WINREG_REGRESULT_HPP_INCLUDED
+#pragma once
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -18,7 +16,7 @@
 #include <string>           // std::wstring
 #include <string_view>      // std::wstring_view
 
-#include "WinReg/internal/ScopedLocalFree.hpp"
+#include "detail/ScopedLocalFree.hpp"
 
 
 namespace winreg
@@ -62,9 +60,20 @@ public:
     [[nodiscard]] std::wstring ErrorMessage(DWORD languageId) const;
 
 
-    // Just implement equality for RegResult;
+    //
+    // Just implement equality and inequality for RegResult;
     // "ordering error codes" has no real meaning.
-    [[nodiscard]] friend bool operator==(const RegResult&, const RegResult&) noexcept = default;
+    //
+
+    [[nodiscard]] friend bool operator==(const RegResult& lhs, const RegResult& rhs) noexcept
+    {
+        return lhs.m_result == rhs.m_result;
+    }
+
+    [[nodiscard]] friend bool operator!=(const RegResult& lhs, const RegResult& rhs) noexcept
+    {
+        return lhs.m_result != rhs.m_result;
+    }
 
 
 private:
@@ -118,7 +127,7 @@ inline std::wstring RegResult::ErrorMessage() const
 inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 {
     // Invoke FormatMessage() to retrieve the error message from Windows
-    winreg_internal::ScopedLocalFree<wchar_t> messagePtr;
+    detail::ScopedLocalFree<wchar_t> messagePtr;
     const DWORD length = ::FormatMessageW(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
@@ -152,6 +161,3 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 
 
 } // namespace winreg
-
-
-#endif // GIOVANNI_DICANIO_WINREG_REGRESULT_HPP_INCLUDED

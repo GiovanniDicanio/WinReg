@@ -8,9 +8,7 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef GIOVANNI_DICANIO_WINREG_REGEXPECTED_HPP_INCLUDED
-#define GIOVANNI_DICANIO_WINREG_REGEXPECTED_HPP_INCLUDED
+#pragma once
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -20,7 +18,7 @@
 #include <utility>          // std::move
 #include <variant>          // std::variant
 
-#include "WinReg/RegResult.hpp"
+#include "RegResult.hpp"
 
 
 namespace winreg
@@ -247,5 +245,3 @@ inline RegExpected<T> RegExpected<T>::MakeRegExpectedWithError(const LSTATUS ret
 
 } // namespace winreg
 
-
-#endif // GIOVANNI_DICANIO_WINREG_REGEXPECTED_HPP_INCLUDED

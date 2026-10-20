@@ -11,6 +11,24 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
+
+
+//
+// Detect the C++ language standard
+//
+
+#if defined(_MSVC_LANG)
+    #define CPP_LANG _MSVC_LANG
+#else
+    #define CPP_LANG __cplusplus
+#endif
+
+#if CPP_LANG == 201703L
+    // C++17
+    #define GIOVANNI_DICANIO_WINREG_USE_CPP17
+#endif
+
+
 #include "WinReg/WinReg.hpp"   // The WinReg library to test
 
 #include <exception>
@@ -300,15 +318,15 @@ void Test()
     // independently from the type.
     //
 
-    vector<BYTE> testRawBinary1 = key.GetRawValue(L"TestValueBinary");
-    if (testRawBinary1 != testBinary)
+    winreg::RegKey::RawValue testRawValue1 = key.GetRawValue(L"TestValueBinary");
+    if (testRawValue1.Data != testBinary)
     {
         wcout << L"RegKey::GetRawValue failed.\n";
     }
 
-    if (auto testRawBinary2 = key.TryGetRawValue(L"TestTryValueBinary"))
+    if (auto testRawValue2 = key.TryGetRawValue(L"TestTryValueBinary"))
     {
-        if (testRawBinary2.GetValue() != testBinary)
+        if (testRawValue2.GetValue().Data != testBinary)
         {
             wcout << L"RegKey::TryGetRawValue failed.\n";
         }
@@ -319,15 +337,15 @@ void Test()
     }
 
     // Test the special case of zero-length binary array
-    vector<BYTE> testEmptyRawBinary1 = key.GetRawValue(L"TestEmptyBinary");
-    if (testEmptyRawBinary1 != testEmptyBinary)
+    auto testEmptyRawBinary1 = key.GetRawValue(L"TestEmptyBinary");
+    if (testEmptyRawBinary1.Data != testEmptyBinary)
     {
         wcout << L"RegKey::GetRawValue failed with zero-length binary data.\n";
     }
 
     if (auto testEmptyRawBinary2 = key.TryGetRawValue(L"TestTryEmptyBinary"))
     {
-        if (testEmptyRawBinary2.GetValue() != testEmptyBinary)
+        if (testEmptyRawBinary2.GetValue().Data != testEmptyBinary)
         {
             wcout << L"RegKey::TryGetRawValue failed with zero-length binary data.\n";
         }
@@ -424,3 +442,14 @@ int main()
 
     return kExitOk;
 }
+
+// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
+// Debug program: F5 or Debug > Start Debugging menu
+
+// Tips for Getting Started:
+//   1. Use the Solution Explorer window to add/manage files
+//   2. Use the Team Explorer window to connect to source control
+//   3. Use the Output window to see build output and other messages
+//   4. Use the Error List window to view errors
+//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
+//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

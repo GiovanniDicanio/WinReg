@@ -5,18 +5,21 @@
 //       Copyright (C) by Giovanni Dicanio (giovanni.dicanio@gmail.com)
 //
 // First version: 2017, January 22nd
-// Last update:   2026, October 14th
+// Last update:   2026, October 20th
 //
 //----------------------------------------------------------------------------
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 
-#ifndef GIOVANNI_DICANIO_WINREG_WINREG_HPP_INCLUDED
-#define GIOVANNI_DICANIO_WINREG_WINREG_HPP_INCLUDED
 
 ////////////////////////////////////////////////////////////////////////////////
-// Main public header - Include this in client code
+//
+// Main public header - Include this in client code:
+//
+// #include "WinReg/WinReg.hpp"     // Use Giovanni Dicanio's WinReg library
+//
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -42,8 +45,8 @@
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
 //
 // IDE/Compiler: Visual Studio 2022
-// C++ Language Standard: C++20 (/std:c++20)
-// Code compiles cleanly at warning level 4 (/W4) on 64-bit builds.
+// C++ Language Standard: C++17 (/std:c++17) and C++20 (/std:c++20).
+// Code compiles cleanly at warning level 4 (/W4) on 64-bit and 32-bit builds.
 //
 // Requires building in Unicode mode (which has been the default since VS2005).
 //
@@ -74,11 +77,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-#include "WinReg/RegKey.hpp"            // The main class for the library
+//------------------------------------------------------------------------------
+//
+// NOTE:
+//
+// #define GIOVANNI_DICANIO_WINREG_USE_CPP17
+//
+// to compile the library code in C++17 mode.
+//
+// The default mode is C++20.
+//
+//------------------------------------------------------------------------------
 
-#include "WinReg/RegException.hpp"
-#include "WinReg/RegExpected.hpp"
-#include "WinReg/RegResult.hpp"
 
+#include "RegKey.hpp"            // The main class for the library
 
-#endif // GIOVANNI_DICANIO_WINREG_WINREG_HPP_INCLUDED
+#include "RegException.hpp"
+#include "RegExpected.hpp"
+#include "RegResult.hpp"
+

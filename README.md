@@ -1,4 +1,4 @@
-# WinReg v10.0.0
+# WinReg v12.0.0 
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -20,18 +20,21 @@ etc.).
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
-| Win32 Registry Type  | C++ Type                                                  |
-| -------------------- |:---------------------------------------------------------:|
-| `REG_DWORD`          | `DWORD`                                                   |
-| `REG_QWORD`          | `ULONGLONG`                                               |
-| `REG_SZ`             | `std::wstring`                                            |
-| `REG_EXPAND_SZ`      | `std::wstring`                                            |
-| `REG_MULTI_SZ`       | `std::vector<std::wstring>`                               |
-| `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (input-only) |
+| Win32 Registry Type  | C++ Type                                                              |
+| -------------------- |:---------------------------------------------------------------------:|
+| `REG_DWORD`          | `DWORD`                                                               |
+| `REG_QWORD`          | `ULONGLONG`                                                           |
+| `REG_SZ`             | `std::wstring`                                                        |
+| `REG_EXPAND_SZ`      | `std::wstring`                                                        |
+| `REG_MULTI_SZ`       | `std::vector<std::wstring>`                                           |
+| `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (C++20 mode, input-only) |
 
-This code is currently developed using **Visual Studio 2022** with **C++20** features enabled 
-(`/std:c++20`). I have no longer tested the code with previous compilers. 
-The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
+This code is currently developed using **Visual Studio 2022**; it can be compiled with **C++20** features 
+enabled (`/std:c++20`), or even in C++17 mode (`/std:c++17`). The default is C++20.
+To compile the code in C++17 mode, `#define GIOVANNI_DICANIO_WINREG_USE_CPP17`
+(you can read about it in the main library header `WinReg/WinReg.hpp`).
+
+The code compiles cleanly at warning level 4 (`/W4`) in 64-bit and 32-bit builds.
 
 This is a **header-only** C++ library (clients should include the main public header **`WinReg/WinReg.hpp`**).
 
@@ -49,7 +52,6 @@ and add the path, for example: `$(SolutionDir)WinReg\Include`
 ![Visual Studio Configuration](Visual_Studio_Include_Directory_Settings.png)
 
 
-`WinRegTest.cpp` contains some demo/test code for the library: check it out for some sample usage.
 
 The library exposes four main classes:
 
@@ -67,6 +69,15 @@ C-interface Windows Registry API, in a convenient higher-level C++ way.
 For example, you can simply open a registry key and get registry values with C++ code like this:
 
 ```c++
+
+#include "WinReg/WinReg.hpp"     // Use Giovanni Dicanio's WinReg library
+
+...
+
+// WinReg's stuff lives in the winreg namespace
+using winreg::RegKey;
+
+
 RegKey  key{ HKEY_CURRENT_USER, L"SOFTWARE\\SomeKey" };
 
 DWORD   dw = key.GetDwordValue (L"SomeDwordValue");
@@ -178,13 +189,6 @@ The library also supports reading raw binary data for Registry types that are un
 or less documented (e.g. `REG_RESOURCE_LIST`, `REG_FULL_RESOURCE_DESCRIPTOR`, etc.),
 via the `RegKey::GetRawValue()` and `RegKey::TryGetRawValue()` methods.
 
-
-**Version Note**: WinReg v5.1.1 is the latest version in which the `TryGetXxxValue()` methods return 
-`std::optional<T>` (discarding the information about the error code).
-Starting from v6.0.0, the `TryGetXxxxValue()` methods return `RegExpected<T>` (which keeps 
-the error information on failure).
-
-
 Note that many methods are available in _two forms_: one that _throws an exception_ of type 
 `RegException` on error (e.g. `RegKey::Open()`), and another that _returns an error status object_ 
 of type `RegResult` (e.g. `RegKey::TryOpen()`) instead of throwing an exception.
@@ -192,14 +196,23 @@ In addition, as indicated above, some methods like the `RegKey::TryGet...Value()
 `RegExpected` instead of throwing exceptions; in case of errors, the returned `RegExpected` 
 contains a `RegResult` storing the error code.
 
-You can take a look at the test code in `WinRegTest.cpp` for some sample usage.
-
 The library stuff lives under the `winreg` namespace.
 
 Thanks to everyone who contributed to this project with some additional features and constructive 
 comments and suggestions.
 
 ---
+
+## Improvements in v12.0.0
+
+- Code can be compiled in both C++17 and C++20 modes.
+- The library now uses the `RegQueryValueEx()` API instead of `RegGetValue()`; this makes it
+  compatible with "legacy" operating systems, like Windows XP.
+- The library is now more robust against malformed registry data. Instead of silently 
+  returning wrong or truncated values, the getters now detect these cases and report them
+  as errors: for example, a `REG_DWORD` value stored with less than 4 bytes, or UTF-16 strings
+  stored with an odd number of bytes (which can't be valid UTF-16).
+- `std::move()` is used in more places to enable move semantics and avoid deep-copies.
 
 
 ## Improvements in v10.0.0

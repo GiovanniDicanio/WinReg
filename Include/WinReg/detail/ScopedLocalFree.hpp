@@ -8,9 +8,7 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef GIOVANNI_DICANIO_WINREG_INTERNAL_SCOPEDLOCALFREE_HPP_INCLUDED
-#define GIOVANNI_DICANIO_WINREG_INTERNAL_SCOPEDLOCALFREE_HPP_INCLUDED
+#pragma once
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -19,7 +17,7 @@
 namespace winreg
 {
 
-namespace winreg_internal
+namespace detail
 {
 
 
@@ -96,9 +94,7 @@ private:
 };
 
 
-} // namespace winreg_internal
+} // namespace detail
 
 } // namespace winreg
 
-
-#endif // GIOVANNI_DICANIO_WINREG_INTERNAL_SCOPEDLOCALFREE_HPP_INCLUDED

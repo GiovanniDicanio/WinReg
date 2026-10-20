@@ -8,19 +8,17 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef GIOVANNI_DICANIO_WINREG_INTERNAL_MULTISTRING_HPP_INCLUDED
-#define GIOVANNI_DICANIO_WINREG_INTERNAL_MULTISTRING_HPP_INCLUDED
+#pragma once
 
 
-#include <Windows.h>        // Windows Platform SDK
-#include <string.h>         // wcslen
+#include <Windows.h>            // Windows Platform SDK
+#include <wchar.h>              // wcslen
 
-#include <string>           // std::wstring
-#include <vector>           // std::vector
+#include <string>               // std::wstring
+#include <vector>               // std::vector
 
-#include "WinReg/RegException.hpp"
-
+#include "../RegException.hpp"
+#include "../RegExpected.hpp"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +29,7 @@
 namespace winreg
 {
 
-namespace winreg_internal
+namespace detail
 {
 
 
@@ -51,7 +49,7 @@ namespace winreg_internal
 // Return true if the wchar_t sequence stored in 'data' terminates
 // with two null (L'\0') wchar_t's
 //------------------------------------------------------------------------------
-[[nodiscard]] bool IsDoubleNullTerminated(const std::vector<wchar_t>& data);
+[[nodiscard]] bool IsDoubleNullTerminated(const std::vector<wchar_t>& data) noexcept;
 
 
 //------------------------------------------------------------------------------
@@ -63,10 +61,35 @@ namespace winreg_internal
 [[nodiscard]] std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data);
 
 
+//------------------------------------------------------------------------------
+// Given a sequence of wchar_ts representing a double-null-terminated string,
+// returns a vector of wstrings that represent the single strings.
+//
+// In this Try version, errors are returned via RegExpected, instead of throwing.
+//
+// Also supports embedded empty strings in the sequence.
+//------------------------------------------------------------------------------
+[[nodiscard]] RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vector<wchar_t>& data);
+
 
 //------------------------------------------------------------------------------
 //                      Inline Function Implementation
 //------------------------------------------------------------------------------
+
+
+inline bool IsDoubleNullTerminated(const std::vector<wchar_t>& data) noexcept
+{
+    // First check that there's enough room for at least two nulls
+    if (data.size() < 2)
+    {
+        return false;
+    }
+
+    // Check that the sequence terminates with two nulls (L'\0', L'\0')
+    const size_t lastPosition = data.size() - 1;
+    return (data[lastPosition] == L'\0') &&
+           (data[lastPosition - 1] == L'\0');
+}
 
 
 inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& data)
@@ -116,23 +139,26 @@ inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& da
 }
 
 
-inline bool IsDoubleNullTerminated(const std::vector<wchar_t>& data)
+inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data)
 {
-    // First check that there's enough room for at least two nulls
-    if (data.size() < 2)
+    RegExpected<std::vector<std::wstring>> result = TryParseMultiString(data);
+    if (!result.IsValid())
     {
-        return false;
+        throw RegException{ result.GetError().Code(), "Not a valid double-NUL-terminated string." };
     }
 
-    // Check that the sequence terminates with two nulls (L'\0', L'\0')
-    const size_t lastPosition = data.size() - 1;
-    return (data[lastPosition] == L'\0') &&
-           (data[lastPosition - 1] == L'\0');
+    // Move the vector out of 'result' (safe use of GetValue() &&): the returned reference is
+    // consumed to move-construct the return value before 'result' is destroyed.
+    // Without std::move(result), GetValue() & would make an expensive copy of the vector<wstring>.
+    return std::move(result).GetValue();
 }
 
 
-inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data)
+inline RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vector<wchar_t>& data)
 {
+    using RegValueType = std::vector<std::wstring>;
+
+
     //
     // Check some edge cases, like an empty vector or a vector containing only L'\0'.
     // These can be used as an empty form for a double-NUL-terminated string.
@@ -142,19 +168,20 @@ inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& da
         ((data.size() == 1) && (data[0] == L'\0')))     // lone L'\0' (documented empty REG_MULTI_SZ form)
     {
         // Return an empty vector
-        return {};
+        return RegExpected<RegValueType>::MakeSuccess(std::vector<std::wstring>{});
     }
 
     // Make sure that there are two terminating L'\0's at the end of the sequence
     if (!IsDoubleNullTerminated(data))
     {
-        throw RegException{ ERROR_INVALID_DATA, "Not a double-null terminated string." };
+        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
     }
 
     // If this is an empty sequence of two L'\0's: "\0\0" --> return an empty vector
     if (data.size() == 2)
     {
-        return {};
+        // Return an empty vector
+        return RegExpected<RegValueType>::MakeSuccess(std::vector<std::wstring>{});
     }
 
 
@@ -208,7 +235,7 @@ inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& da
     //
 
     const wchar_t* currStringPtr = data.data();
-    const wchar_t* const endPtr  = data.data() + data.size() - 1;
+    const wchar_t* const endPtr = data.data() + data.size() - 1;
 
     while (currStringPtr < endPtr)
     {
@@ -230,13 +257,10 @@ inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& da
         currStringPtr += currStringLength + 1;
     }
 
-    return result;
+    return RegExpected<RegValueType>::MakeSuccess(std::move(result));
 }
 
-
-} // namespace winreg_internal
+} // namespace detail
 
 } // namespace winreg
 
-
-#endif // GIOVANNI_DICANIO_WINREG_INTERNAL_MULTISTRING_HPP_INCLUDED
