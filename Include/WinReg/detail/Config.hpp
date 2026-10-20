@@ -8,7 +8,8 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef GIOVANNI_DICANIO_WINREG_DETAIL_CONFIG_HPP
+#define GIOVANNI_DICANIO_WINREG_DETAIL_CONFIG_HPP
 
 
 namespace winreg
@@ -30,3 +31,5 @@ namespace detail
 
 } // namespace winreg
 
+
+#endif // GIOVANNI_DICANIO_WINREG_DETAIL_CONFIG_HPP
