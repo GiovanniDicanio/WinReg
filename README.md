@@ -202,7 +202,7 @@ comments and suggestions.
 ## Release Notes for v14.0.0
 
 - The main theme of v14 is **simplification**: I dropped C++17 support, and as a result of that 
-  the code got simpler. For example: there are no more preprocessor `#ifdefs` to check whether 
+  the code got simpler. For example: there are no more preprocessor `#ifdef`s to check whether 
   the code is compiled in C++17 or C++20 mode; C++20 allows simpler default comparison code, 
   `std::in_range()` simplifies the code in `SafeCast.hpp`, etc. 
   Anyway, if you need code that can be compiled in **C++17** mode, you can check 
