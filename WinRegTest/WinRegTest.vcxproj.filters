@@ -53,10 +53,10 @@
     <ClInclude Include="..\Include\WinReg\RegKey_impl.hpp">
       <Filter>WinReg Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\WinReg\detail\ExpandStrings.hpp">
+    <ClInclude Include="..\Include\WinReg\detail\Config.hpp">
       <Filter>WinReg Header Files\detail</Filter>
     </ClInclude>
-    <ClInclude Include="..\Include\WinReg\detail\Config.hpp">
+    <ClInclude Include="..\Include\WinReg\detail\ExpandStrings.hpp">
       <Filter>WinReg Header Files\detail</Filter>
     </ClInclude>
   </ItemGroup>

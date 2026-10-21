@@ -8,24 +8,13 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GIOVANNI_DICANIO_WINREG_REGKEY_HPP
-#define GIOVANNI_DICANIO_WINREG_REGKEY_HPP
+#pragma once
 
 
 #include <Windows.h>        // Windows Platform SDK
 
-
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-    //
-    // C++20 features
-    //
-
-    #include <compare>          // std::compare_three_way, std::strong_ordering
-    #include <span>             // std::span
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
-
+#include <compare>          // std::compare_three_way, std::strong_ordering
+#include <span>             // std::span
 #include <string>           // std::string, std::wstring
 #include <utility>          // std::swap, std::pair, std::move
 #include <vector>           // std::vector
@@ -223,11 +212,7 @@ public:
     void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
-
-    // std::span is not available in C++17; must use at least C++20.
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
     void SetBinaryValue(const std::wstring& valueName, std::span<const BYTE> data);
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
 
 
     //
@@ -239,38 +224,35 @@ public:
     [[nodiscard]] RegResult TrySetQwordValue(const std::wstring& valueName, ULONGLONG data) noexcept;
 
     [[nodiscard]] RegResult TrySetStringValue(const std::wstring& valueName,
-        const std::wstring& data);
+                                              const std::wstring& data);
     // Note: The TrySetStringValue method CANNOT be marked noexcept,
     // because internally the method *may* throw an exception if the input string is too big
     // (size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetExpandStringValue(const std::wstring& valueName,
-        const std::wstring& data);
+                                                    const std::wstring& data);
     // Note: The TrySetExpandStringValue method CANNOT be marked noexcept,
     // because internally the method *may* throw an exception if the input string is too big
     // (size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetMultiStringValue(const std::wstring& valueName,
-        const std::vector<std::wstring>& data);
+                                                   const std::vector<std::wstring>& data);
     // Note: The TrySetMultiStringValue method CANNOT be marked noexcept,
     // because internally the method *dynamically allocates memory* for creating the multi-string
     // that will be stored in the Registry.
 
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
-        const std::vector<BYTE>& data);
+                                              const std::vector<BYTE>& data);
     // Note: This overload of the TrySetBinaryValue method CANNOT be marked noexcept,
     // because internally the method *may* throw an exception if the input vector is too large
     // (vector::size size_t value overflowing a DWORD).
 
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
-        const void* data,
-        DWORD dataSize) noexcept;
+                                              const void* data,
+                                              DWORD dataSize) noexcept;
 
-    // std::span is not available in C++17; must use at least C++20.
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
     [[nodiscard]] RegResult TrySetBinaryValue(const std::wstring& valueName,
-        std::span<const BYTE> data);
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
+                                              std::span<const BYTE> data);
 
 
     //
@@ -503,12 +485,6 @@ public:
     [[nodiscard]] static const wchar_t* RegTypeToString(DWORD regType);
 
 
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-    //
-    // C++20 code
-    //
-
     //
     // Relational comparison operators are overloaded as friend non-members.
     //
@@ -527,21 +503,6 @@ public:
         return std::compare_three_way{}(lhs.m_hKey, rhs.m_hKey);
     }
 
-#else
-
-    //
-    // C++17 code
-    //
-
-    //
-    // Relational comparison operators are overloaded as non-members
-    // ==, !=, <, <=, >, >=
-    //
-    // (see RegKey_impl.hpp)
-    //
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
-
 
     //
     // Private Implementation
@@ -558,5 +519,3 @@ private:
 
 #include "RegKey_impl.hpp"      // Inline implementations
 
-
-#endif // GIOVANNI_DICANIO_WINREG_REGKEY_HPP

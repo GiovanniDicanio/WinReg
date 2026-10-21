@@ -8,8 +8,7 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP
-#define GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP
+#pragma once
 
 //
 // NOTE: This file is included by "RegKey.hpp" and contains the inline implementations
@@ -22,21 +21,10 @@
 #include <wchar.h>          // wcsnlen
 
 #include <memory>           // std::unique_ptr, std::make_unique
+#include <span>             // std::span
 #include <string>           // std::string, std::wstring
 #include <utility>          // std::swap, std::pair, std::move
 #include <vector>           // std::vector
-
-
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-    //
-    // <span> is not available in C++17 mode; it requires C++20.
-    //
-
-    #include <span>             // std::span
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
-
 
 #include "detail/Config.hpp"
 #include "detail/ExpandStrings.hpp"
@@ -46,54 +34,6 @@
 
 namespace winreg
 {
-
-#ifdef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-//
-// C++17 code (use shortcut implementation in C++20)
-//
-
-//------------------------------------------------------------------------------
-//          Overloads of relational comparison operators for RegKey
-//------------------------------------------------------------------------------
-
-[[nodiscard]] inline bool operator==(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() == b.Get();
-}
-
-
-[[nodiscard]] inline bool operator!=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() != b.Get();
-}
-
-
-[[nodiscard]] inline bool operator<(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() < b.Get();
-}
-
-
-[[nodiscard]] inline bool operator<=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() <= b.Get();
-}
-
-
-[[nodiscard]] inline bool operator>(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() > b.Get();
-}
-
-
-[[nodiscard]] inline bool operator>=(const RegKey& a, const RegKey& b) noexcept
-{
-    return a.Get() >= b.Get();
-}
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
-
 
 //------------------------------------------------------------------------------
 //                     RegKey Inline Method Implementation
@@ -514,12 +454,6 @@ inline void RegKey::SetMultiStringValue(
 }
 
 
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-//
-// C++20 code
-//
-
 inline void RegKey::SetBinaryValue(
     const std::wstring& valueName,
     const std::span<const BYTE> data
@@ -539,35 +473,6 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
 
     SetBinaryValue(valueName, std::span{ data });
 }
-
-#else
-
-//
-// C++17-compatible code
-//
-
-inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data)
-{
-    _ASSERTE(IsValid());
-
-    // Total data size, in bytes
-    const DWORD dataSize = detail::SafeCastSizeToDword(data.size());
-
-    LSTATUS retCode = ::RegSetValueExW(
-        m_hKey,
-        valueName.c_str(),
-        0, // reserved
-        REG_BINARY,
-        data.data(),
-        dataSize
-    );
-    if (retCode != ERROR_SUCCESS)
-    {
-        throw RegException{ retCode, "Cannot write binary data value: RegSetValueExW failed." };
-    }
-}
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
 
 
 inline void RegKey::SetBinaryValue(
@@ -689,12 +594,6 @@ inline RegResult RegKey::TrySetMultiStringValue(const std::wstring& valueName,
 }
 
 
-#ifndef GIOVANNI_DICANIO_WINREG_USE_CPP17
-
-//
-// C++20 code
-//
-
 inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
                                            const std::span<const BYTE> data)
 {
@@ -714,32 +613,6 @@ inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
 
     return TrySetBinaryValue(valueName, std::span{ data });
 }
-
-#else
-
-//
-// C++17-compatible code
-//
-
-inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
-                                           const std::vector<BYTE>& data)
-{
-    _ASSERTE(IsValid());
-
-    // Total data size, in bytes
-    const DWORD dataSize = detail::SafeCastSizeToDword(data.size());
-
-    return RegResult{ ::RegSetValueExW(
-        m_hKey,
-        valueName.c_str(),
-        0, // reserved
-        REG_BINARY,
-        data.data(),
-        dataSize
-    ) };
-}
-
-#endif // GIOVANNI_DICANIO_WINREG_USE_CPP17
 
 
 inline RegResult RegKey::TrySetBinaryValue(const std::wstring& valueName,
@@ -2813,7 +2686,7 @@ inline void RegKey::CopyTree(const std::wstring& sourceSubKey, const RegKey& des
 
 
 inline RegResult RegKey::TryCopyTree(const std::wstring& sourceSubKey,
-    const RegKey& destKey) noexcept
+                                     const RegKey& destKey) noexcept
 {
     _ASSERTE(IsValid());
 
@@ -3159,7 +3032,7 @@ inline void RegKey::ConnectRegistry(const std::wstring& machineName, const HKEY 
 
 
 inline RegResult RegKey::TryConnectRegistry(const std::wstring& machineName,
-    const HKEY hKeyPredefined) noexcept
+                                            const HKEY hKeyPredefined) noexcept
 {
     // Try the connection
     HKEY hKeyResult = nullptr;
@@ -3203,5 +3076,3 @@ inline const wchar_t* RegKey::RegTypeToString(const DWORD regType)
 
 } // namespace winreg
 
-
-#endif // GIOVANNI_DICANIO_WINREG_REGKEY_IMPL_HPP

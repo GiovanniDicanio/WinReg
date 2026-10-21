@@ -12,23 +12,6 @@
 //////////////////////////////////////////////////////////////////////////
 
 
-
-//
-// Detect the C++ language standard
-//
-
-#if defined(_MSVC_LANG)
-    #define CPP_LANG _MSVC_LANG
-#else
-    #define CPP_LANG __cplusplus
-#endif
-
-#if CPP_LANG == 201703L
-    // C++17
-    #define GIOVANNI_DICANIO_WINREG_USE_CPP17
-#endif
-
-
 #include "WinReg/WinReg.hpp"   // The WinReg library to test
 
 #include <exception>
