@@ -8,8 +8,7 @@
 // SPDX-License-Identifier: MIT
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef GIOVANNI_DICANIO_WINREG_REGRESULT_HPP
-#define GIOVANNI_DICANIO_WINREG_REGRESULT_HPP
+#pragma once
 
 
 #include <Windows.h>        // Windows Platform SDK
@@ -61,20 +60,9 @@ public:
     [[nodiscard]] std::wstring ErrorMessage(DWORD languageId) const;
 
 
-    //
-    // Just implement equality and inequality for RegResult;
+    // Just implement equality for RegResult;
     // "ordering error codes" has no real meaning.
-    //
-
-    [[nodiscard]] friend bool operator==(const RegResult& lhs, const RegResult& rhs) noexcept
-    {
-        return lhs.m_result == rhs.m_result;
-    }
-
-    [[nodiscard]] friend bool operator!=(const RegResult& lhs, const RegResult& rhs) noexcept
-    {
-        return lhs.m_result != rhs.m_result;
-    }
+    [[nodiscard]] friend bool operator==(const RegResult&, const RegResult&) noexcept = default;
 
 
 private:
@@ -163,5 +151,3 @@ inline std::wstring RegResult::ErrorMessage(const DWORD languageId) const
 
 } // namespace winreg
 
-
-#endif // GIOVANNI_DICANIO_WINREG_REGRESULT_HPP

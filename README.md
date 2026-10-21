@@ -1,4 +1,4 @@
-# WinReg v12.0.0 
+# WinReg v14.0.0 
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -20,21 +20,17 @@ etc.).
 
 The Win32 registry value types are mapped to C++ higher-level types according the following table:
 
-| Win32 Registry Type  | C++ Type                                                              |
-| -------------------- |:---------------------------------------------------------------------:|
-| `REG_DWORD`          | `DWORD`                                                               |
-| `REG_QWORD`          | `ULONGLONG`                                                           |
-| `REG_SZ`             | `std::wstring`                                                        |
-| `REG_EXPAND_SZ`      | `std::wstring`                                                        |
-| `REG_MULTI_SZ`       | `std::vector<std::wstring>`                                           |
-| `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (C++20 mode, input-only) |
+| Win32 Registry Type  | C++ Type                                                  |
+| -------------------- |:---------------------------------------------------------:|
+| `REG_DWORD`          | `DWORD`                                                   |
+| `REG_QWORD`          | `ULONGLONG`                                               |
+| `REG_SZ`             | `std::wstring`                                            |
+| `REG_EXPAND_SZ`      | `std::wstring`                                            |
+| `REG_MULTI_SZ`       | `std::vector<std::wstring>`                               |
+| `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (input-only) |
 
-This code is currently developed using **Visual Studio 2022**; it can be compiled with **C++20** features 
-enabled (`/std:c++20`), or even in C++17 mode (`/std:c++17`). The default is C++20.
-To compile the code in C++17 mode, `#define GIOVANNI_DICANIO_WINREG_USE_CPP17`
-(you can read about it in the main library header `WinReg/WinReg.hpp`).
-
-The code compiles cleanly at warning level 4 (`/W4`) in 64-bit and 32-bit builds.
+This code is currently developed using **Visual Studio 2022**, with **C++20** features 
+enabled (`/std:c++20`). The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
 
 This is a **header-only** C++ library (clients should include the main public header **`WinReg/WinReg.hpp`**).
 
@@ -202,6 +198,25 @@ Thanks to everyone who contributed to this project with some additional features
 comments and suggestions.
 
 ---
+
+## Release Notes for v14.0.0
+
+- The main theme of v14 is **simplification**: I dropped C++17 support, and as a result of that 
+  the code got simpler. For example: there are no more preprocessor `#ifdef`s to check whether 
+  the code is compiled in C++17 or C++20 mode; C++20 allows simpler default comparison code, 
+  `std::in_range()` simplifies the code in `SafeCast.hpp`, etc. 
+  Anyway, if you need code that can be compiled in **C++17** mode, you can check 
+  the [v12 branch](https://github.com/GiovanniDicanio/WinReg/tree/winreg-v12-cpp20-cpp17-winxp-compatible-and-more-secure-getters).
+- `#pragma once` is now used instead of more verbose header guards.
+- Note that the code hardening features in getter methods against malformed registry data 
+  that were introduced in v12 are still present in this release.
+- Note on **Windows XP compatibility**: The code still uses the `RegQueryValueExW()` API, 
+  which is compatible with Windows XP; but I'm _not_ promising to focus on Windows XP compatibility 
+  (e.g. I may add calls to other APIs that are not available in Windows XP). 
+  Moreover, the [latest Visual Studio C++ toolset that supports Windows XP](https://stackoverflow.com/q/69885122) 
+  is **v141_xp**, from Visual Studio 2017 (also available in VS 2019). It has full C++14 support, 
+  partial C++17 support, but it does _not_ support C++20 (which is required by this release).
+  
 
 ## Improvements in v12.0.0
 
