@@ -5,7 +5,7 @@
 //       Copyright (C) by Giovanni Dicanio (giovanni.dicanio@gmail.com)
 //
 // First version: 2017, January 22nd
-// Last update:   2026, October 21st
+// Last update:   2026, November 2nd
 //
 //----------------------------------------------------------------------------
 // SPDX-License-Identifier: MIT
