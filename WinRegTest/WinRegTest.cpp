@@ -2,6 +2,8 @@
 //
 // WinRegTest.cpp -- by Giovanni Dicanio
 //
+// *** OLD TEST -- New tests are done using Catch2 ***
+//
 // Test some of the WinReg code
 //
 // NOTE --- Test Preparation ---

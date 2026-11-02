@@ -91,6 +91,59 @@ public:
     [[nodiscard]] static RegExpected<T> MakeRegExpectedWithError(LSTATUS retCode);
 
 
+    //
+    // These methods match std::expected's names for similar methods.
+    // Using these methods will make it easier for WinReg library users
+    // a future transition to std::expected (which requires C++23).
+    //
+    // NOTE:
+    // I write the implementations here inline to make it clear
+    // to which original RegExpected's methods they map.
+    //
+
+    // Does this object contain a valid value?
+    [[nodiscard]] bool has_value() const noexcept
+    {
+        return IsValid();
+    }
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] const T& value() const &
+    {
+        return GetValue();
+    }
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] T& value() &
+    {
+        return GetValue();
+    }
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] T&& value() &&
+    {
+        return GetValue();
+    }
+
+    // Access the value (if the object contains a valid value).
+    // Throws an exception if the object is in invalid state.
+    [[nodiscard]] const T&& value() const &&
+    {
+        return GetValue();
+    }
+
+    // Access the error code (if the object contains an error status)
+    // Throws an exception if the object is in valid state.
+    [[nodiscard]] RegResult error() const
+    {
+        return GetError();
+    }
+
+
+
 private:
     // Stores a value of type T on success,
     // or RegResult on error

@@ -1,4 +1,4 @@
-# WinReg v14.0.0 
+# WinReg v14.1.0 
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -198,6 +198,14 @@ Thanks to everyone who contributed to this project with some additional features
 comments and suggestions.
 
 ---
+
+## Release Notes for v14.1.0
+
+- Added methods to `RegExpected` that match `std::expected`'s names like `value()`, `error()`, 
+  `has_value()`, to make it easier for WinReg library users a future transition to `std::expected` 
+  (which requires C++23).
+- Implemented new WinReg tests using the Catch2 framework (https://github.com/catchorg/catch2).
+
 
 ## Release Notes for v14.0.0
 
