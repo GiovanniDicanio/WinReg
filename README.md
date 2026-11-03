@@ -1,4 +1,4 @@
-# WinReg v14.1.0 
+# WinReg v14.1.1 
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
@@ -29,8 +29,8 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_MULTI_SZ`       | `std::vector<std::wstring>`                               |
 | `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (input-only) |
 
-This code is currently developed using **Visual Studio 2022**, with **C++20** features 
-enabled (`/std:c++20`). The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
+This code is currently developed using **Visual Studio 2022** in **C++20** mode (`/std:c++20`).
+The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
 
 This is a **header-only** C++ library (clients should include the main public header **`WinReg/WinReg.hpp`**).
 
@@ -181,6 +181,43 @@ else
 }
 ```
 
+
+To make it easier for the library clients a potential future migration to C++23's `std::expected`
+instead of my current custom `RegExpected`, I added to `RegExpected` some methods that have the same names
+of the logical corresponding methods in `std::expected` (e.g. `has_value()`, `value()`, `error()`);
+so, the above code can be written using those, as well:
+
+```c++
+//
+// RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
+// the returned RegExpected contains a DWORD on success, 
+// or a RegResult instance on error.
+//
+// This would be similar to std::expected<DWORD, RegResult>.
+//
+// 'res' is a RegExpected<DWORD> in this case:
+//
+const auto res = key.TryGetDwordValue(L"SomeDwordValue");
+if (res.has_value())  // or simply:  if (res)
+{
+    //
+    // All right: Process the returned value ...
+    //
+    // Use res.value() to access the stored DWORD.
+    //
+}
+else
+{
+    //
+    // The method has failed: 
+    //
+    // The returned RegExpected contains a RegResult with an error code.
+    // Use res.error() to access the RegResult object.
+    //
+}
+```
+
+
 The library also supports reading raw binary data for Registry types that are unsupported
 or less documented (e.g. `REG_RESOURCE_LIST`, `REG_FULL_RESOURCE_DESCRIPTOR`, etc.),
 via the `RegKey::GetRawValue()` and `RegKey::TryGetRawValue()` methods.
@@ -198,6 +235,14 @@ Thanks to everyone who contributed to this project with some additional features
 comments and suggestions.
 
 ---
+
+
+## Release Notes for v14.1.1
+
+- Added more tests written with Catch2.
+- Removed the initial non-Catch2-based test project from the Visual Studio solution.
+- Updated README with sample code showing new `std::expected`-like methods added to `RegExpected`.
+
 
 ## Release Notes for v14.1.0
 

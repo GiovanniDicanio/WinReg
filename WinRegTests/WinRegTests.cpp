@@ -480,7 +480,7 @@ TEST_CASE_METHOD(RegTestFixture, "Multi-String values", "[RegKey][REG_MULTI_SZ]"
 {
     SECTION("plain multi-string")
     {
-        std::vector<std::wstring> names = { L"Connie", L"Gio", L"C64" };
+        const std::vector<std::wstring> names = { L"Connie", L"Gio", L"C64" };
         Key().SetMultiStringValue(L"Names", names);
         REQUIRE(Key().GetMultiStringValue(L"Names") == names);
     }
@@ -507,7 +507,7 @@ TEST_CASE_METHOD(RegTestFixture, "Binary values", "[RegKey][REG_BINARY]")
 {
     SECTION("plain binary data")
     {
-        std::vector<BYTE> data = { 0x11, 0x22, 0x33, 0x44 };
+        const std::vector<BYTE> data = { 0x11, 0x22, 0x33, 0x44 };
         Key().SetBinaryValue(L"TestBinaryData", data);
         REQUIRE(Key().GetBinaryValue(L"TestBinaryData") == data);
     }
@@ -555,6 +555,8 @@ TEST_CASE_METHOD(RegTestFixture, "Enum values", "[RegKey][EnumValues]")
 
     auto values = Key().EnumValues();
 
+    REQUIRE(values.size() == expectedValues.size());
+
     // Make sure the elements are sorted before comparing element-wise
     std::sort(values.begin(), values.end());
 
@@ -587,6 +589,454 @@ TEST_CASE_METHOD(RegTestFixture, "Key contains value", "[RegKey][ContainsValue]"
 
     // Check that a not-existing value is not contained in the key
     REQUIRE(! Key().ContainsValue(L"ThisDoesNotExist123"));
+}
+
+
+
+//=============================================================================
+//                          Testing TryXxx Methods
+//=============================================================================
+
+
+//=============================================================================
+//                          DWORD Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "DWORD values round-trip", "[RegKey][REG_DWORD][try]")
+{
+    auto result = Key().TrySetDwordValue(L"TestDword", 64);
+    REQUIRE(result.IsOk());
+
+    auto resultRead = Key().TryGetDwordValue(L"TestDword");
+    REQUIRE(resultRead.has_value());
+    REQUIRE(resultRead.value() == 64);
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Missing DWORD value returns error", "[RegKey][REG_DWORD][try]")
+{
+    auto result = Key().TryGetDwordValue(L"DoesNotExist");
+    REQUIRE(! result.has_value());
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Malformed DWORD value returns error", "[RegKey][REG_DWORD][try]")
+{
+    SECTION("DWORD with cb = 8 (ULONGLONG)")
+    {
+        // Write a malformed DWORD
+        //
+        // Create a REG_DWORD with cb = 8 (ULONLONG)
+        //
+        ULONGLONG testValue = 100;
+
+        DWORD cbData = sizeof(testValue); // should be 4 for a DWORD...
+
+        const wchar_t* valueName = L"TestWrongType_Dword_cb8";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_DWORD,
+            reinterpret_cast<const BYTE*>(&testValue),
+            cbData
+        ));
+
+        auto result = Key().TryGetDwordValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_INVALID_DATA);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+
+
+    SECTION("DWORD with cb = 2")
+    {
+        // Write a malformed DWORD
+        //
+        // Create a REG_DWORD with cb = 2
+
+        // Store a REG_DWORD with only 2 bytes: 0x1234
+        const WORD shortValue = 0x1234;
+
+        DWORD cbData = sizeof(shortValue); // should be 4 for a DWORD...
+
+        const wchar_t* valueName = L"TestWrongType_Dword_cb2";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_DWORD,
+            reinterpret_cast<const BYTE*>(&shortValue),
+            cbData
+        ));
+
+        auto result = Key().TryGetDwordValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_INVALID_DATA);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+
+    SECTION("another type read as a DWORD")
+    {
+        // Create a REG_SZ, and try to read it back as a DWORD
+
+        constexpr wchar_t testString[] = L"Hello world! This is a test.";
+
+        const wchar_t* valueName = L"TestWrongType_Dword_RegSZ";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_SZ,
+            reinterpret_cast<const BYTE*>(testString),
+            sizeof(testString)
+        ));
+
+        auto result = Key().TryGetDwordValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_UNSUPPORTED_TYPE);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+}
+
+
+//=============================================================================
+//                          QWORD Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "QWORD values round-trip", "[RegKey][REG_QWORD][try]")
+{
+    constexpr ULONGLONG kTestValue = 0x11223344'AABBCCDD;
+
+    auto result = Key().TrySetQwordValue(L"TestQword", kTestValue);
+    REQUIRE(result.IsOk());
+
+    auto resultRead = Key().TryGetQwordValue(L"TestQword");
+    REQUIRE(resultRead.has_value());
+    REQUIRE(resultRead.value() == kTestValue);
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Missing QWORD value returns error", "[RegKey][REG_QWORD][try]")
+{
+    auto result = Key().TryGetQwordValue(L"DoesNotExist");
+    REQUIRE(! result.has_value());
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Malformed QWORD value returns error", "[RegKey][REG_QWORD][try]")
+{
+    SECTION("QWORD with cb = 16")
+    {
+        // Write a malformed QWORD
+        //
+        // Create a REG_QWORD with cb = 16
+        //
+        BYTE testValue[16] = { 0 };
+
+        DWORD cbData = sizeof(testValue); // should be 8 for a QWORD...
+
+        const wchar_t* valueName = L"TestWrongType_Qword_cb16";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_QWORD,
+            reinterpret_cast<const BYTE*>(&testValue),
+            cbData
+        ));
+
+        auto result = Key().TryGetQwordValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_INVALID_DATA);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+
+    SECTION("QWORD with cb = 4")
+    {
+        // Write a malformed QWORD
+        //
+        // Create a REG_QWORD with cb = 4
+
+        // Store a REG_QWORD with only 4 bytes
+        const DWORD shortValue = 0x1234ABCD;
+
+        DWORD cbData = sizeof(shortValue); // should be 8 for a QWORD...
+
+        const wchar_t* valueName = L"TestWrongType_Qword_cb4";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_QWORD,
+            reinterpret_cast<const BYTE*>(&shortValue),
+            cbData
+        ));
+
+        auto result = Key().TryGetQwordValue(valueName);
+        REQUIRE(! result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_INVALID_DATA);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+
+    SECTION("another type read as a QWORD")
+    {
+        // Create a REG_SZ, and try to read it back as a QWORD
+
+        constexpr wchar_t testString[] = L"Hello world! This is a test.";
+
+        const wchar_t* valueName = L"TestWrongType_Qword_RegSZ";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueEx(
+            Key().Get(),
+            valueName,
+            0,
+            REG_SZ,
+            reinterpret_cast<const BYTE*>(testString),
+            sizeof(testString)
+        ));
+
+        auto result = Key().TryGetQwordValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_UNSUPPORTED_TYPE);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+}
+
+
+//=============================================================================
+//                          String Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "String values", "[RegKey][REG_SZ][try]")
+{
+    SECTION("plain string")
+    {
+        auto result = Key().TrySetStringValue(L"Name", L"Connie");
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetStringValue(L"Name");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value() == L"Connie");
+    }
+
+    SECTION("empty string")
+    {
+        auto result = Key().TrySetStringValue(L"Empty", L"");
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetStringValue(L"Empty");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value().empty());
+    }
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Missing string value returns error", "[RegKey][REG_SZ][try]")
+{
+    auto result = Key().TryGetStringValue(L"DoesNotExist");
+    REQUIRE(!result.has_value());
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Malformed strings return error", "[RegKey][REG_SZ][try]")
+{
+    // Odd byte length
+    SECTION("odd byte length string")
+    {
+        const BYTE data[] = { 'A', 'b', 'c', 'd', '\0' };
+
+        const wchar_t* valueName = L"OddByteLengthString";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueExW(
+            Key().Get(),
+            valueName,
+            0,
+            REG_SZ,
+            data,
+            sizeof(data)
+        ));
+
+        auto result = Key().TryGetStringValue(valueName);
+        REQUIRE(! result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_INVALID_DATA);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+
+    // Not REG_SZ
+    SECTION("not REG_SZ string")
+    {
+        const DWORD data = 0xABCDEF;
+
+        const wchar_t* valueName = L"Not_REG_SZ";
+
+        REQUIRE_WIN32_SUCCESS(::RegSetValueExW(
+            Key().Get(),
+            valueName,
+            0,
+            REG_DWORD,
+            reinterpret_cast<const BYTE*>(&data),
+            sizeof(data)
+        ));
+
+        auto result = Key().TryGetStringValue(valueName);
+        REQUIRE(!result.has_value());
+
+#ifdef WINREG_TESTS_CHECK_ERROR_CODES
+        REQUIRE(result.error().Code() == ERROR_UNSUPPORTED_TYPE);
+#endif // WINREG_TESTS_CHECK_ERROR_CODES
+
+    }
+}
+
+
+//=============================================================================
+//                          Multi-String Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "Multi-String values", "[RegKey][REG_MULTI_SZ][try]")
+{
+    SECTION("plain multi-string")
+    {
+        const std::vector<std::wstring> names = { L"Connie", L"Gio", L"C64" };
+        auto result = Key().TrySetMultiStringValue(L"Names", names);
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetMultiStringValue(L"Names");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value() == names);
+    }
+
+    SECTION("empty multi-string")
+    {
+        auto result = Key().TrySetMultiStringValue(L"Empty", {});
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetMultiStringValue(L"Empty");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value().empty());
+    }
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Missing multi-string value returns error", "[RegKey][REG_MULTI_SZ][try]")
+{
+    auto result = Key().TryGetMultiStringValue(L"DoesNotExist");
+    REQUIRE(!result.has_value());
+}
+
+
+//=============================================================================
+//                          Binary Data Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "Binary values", "[RegKey][REG_BINARY][try]")
+{
+    SECTION("plain binary data")
+    {
+        const std::vector<BYTE> data = { 0x11, 0x22, 0x33, 0x44 };
+        auto result = Key().TrySetBinaryValue(L"TestBinaryData", data);
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetBinaryValue(L"TestBinaryData");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value() == data);
+    }
+
+    SECTION("empty binary")
+    {
+        auto result = Key().TrySetBinaryValue(L"Empty", std::vector<BYTE>{});
+        REQUIRE(result.IsOk());
+
+        auto resultRead = Key().TryGetBinaryValue(L"Empty");
+        REQUIRE(resultRead.has_value());
+        REQUIRE(resultRead.value().empty());
+    }
+}
+
+
+TEST_CASE_METHOD(RegTestFixture, "Missing binary value returns error", "[RegKey][REG_BINARY][try]")
+{
+    auto result = Key().TryGetBinaryValue(L"DoesNotExist");
+    REQUIRE(!result.has_value());
+}
+
+
+//=============================================================================
+//                          Enum Value Tests [try]
+//=============================================================================
+
+TEST_CASE_METHOD(RegTestFixture, "Enum values", "[RegKey][EnumValues][try]")
+{
+    //
+    // Create some values, and enumerate them back
+    //
+
+    // NOTE:
+    // I'm assuming all the Set method invocations succeed,
+    // so I'm using the throwing variants (SetXxxxValue).
+    // If some of these fail, an exception will be thrown
+    // (but that is not expected, and not what this test case is testing)
+    Key().SetDwordValue(L"Value1_Dword", 10);
+    Key().SetDwordValue(L"Value2_Dword", 20);
+    Key().SetDwordValue(L"Value3_Dword", 0xABCD'EF12);
+    Key().SetQwordValue(L"Value4_Qword", 0xABCD'EF12'3456'0102);
+    Key().SetStringValue(L"Value5_String", L"Test string #1");
+    Key().SetStringValue(L"Value6_String", L"Test string #2");
+
+    // It's important that the elements in this expected values array are sorted by value name
+    const std::vector<std::pair<std::wstring, DWORD>> expectedValues = {
+        {L"Value1_Dword",   REG_DWORD},
+        {L"Value2_Dword",   REG_DWORD},
+        {L"Value3_Dword",   REG_DWORD},
+        {L"Value4_Qword",   REG_QWORD},
+        {L"Value5_String",  REG_SZ},
+        {L"Value6_String",  REG_SZ}
+    };
+
+    auto result = Key().TryEnumValues();
+    REQUIRE(result.has_value());            // TryEnumValus() call must succeed
+
+    // The result vector and the expected vector must have the same number of elements
+    REQUIRE(result.value().size() == expectedValues.size());
+
+    // Make sure the elements are sorted before comparing element-wise
+    std::sort(result.value().begin(), result.value().end());
+
+    int index = 0;
+    for (const auto& [valueName, valueType] : result.value())
+    {
+        REQUIRE(valueName == expectedValues[index].first);
+        REQUIRE(valueType == expectedValues[index].second);
+
+        index++;
+    }
 }
 
 
