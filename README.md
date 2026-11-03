@@ -1,7 +1,11 @@
-# WinReg v14.1.1 
+# WinReg v15.0.0 (TODO: version number)
 ## High-level C++ Wrapper Around the Low-level Windows Registry C-interface API
 
 by Giovanni Dicanio
+
+**TODO**: This would be the first version of WinReg requiring C++23 because of `std::expected`.
+This code is based on v14.1.1; not sure about the version number.
+
 
 The Windows Registry C-interface API is  _very low-level_ and _hard_ to use.
 
@@ -29,7 +33,7 @@ The Win32 registry value types are mapped to C++ higher-level types according th
 | `REG_MULTI_SZ`       | `std::vector<std::wstring>`                               |
 | `REG_BINARY`         | `std::vector<BYTE>`, `std::span<const BYTE>` (input-only) |
 
-This code is currently developed using **Visual Studio 2022** in **C++20** mode (`/std:c++20`).
+This code is currently developed using **Visual Studio 2022** in **C++23** mode (`/std:c++23preview`).
 The code compiles cleanly at warning level 4 (`/W4`) in 64-bit builds.
 
 This is a **header-only** C++ library (clients should include the main public header **`WinReg/WinReg.hpp`**).
@@ -151,49 +155,15 @@ if (key.ContainsValue(L"Connie"))
 ```
 
 You can also use the `RegKey::TryGet...Value()` methods, that return `RegExpected<T>` 
-instead of throwing an exception on error:
+instead of throwing an exception on error (note that `RegExpected<T>` is simply a `std::expected<T, RegResult>`):
 
 ```c++
 //
-// RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
-// the returned RegExpected contains a DWORD on success, 
+// RegKey::TryGetDwordValue() returns a RegExpected<DWORD>,
+// which is a std::expected<DWORD, RegResult>.
+//
+// The returned RegExpected contains a DWORD on success, 
 // or a RegResult instance on error.
-//
-// 'res' is a RegExpected<DWORD> in this case:
-//
-const auto res = key.TryGetDwordValue(L"SomeDwordValue");
-if (res.IsValid())  // or simply:  if (res)
-{
-    //
-    // All right: Process the returned value ...
-    //
-    // Use res.GetValue() to access the stored DWORD.
-    //
-}
-else
-{
-    //
-    // The method has failed: 
-    //
-    // The returned RegExpected contains a RegResult with an error code.
-    // Use res.GetError() to access the RegResult object.
-    //
-}
-```
-
-
-To make it easier for the library clients a potential future migration to C++23's `std::expected`
-instead of my current custom `RegExpected`, I added to `RegExpected` some methods that have the same names
-of the logical corresponding methods in `std::expected` (e.g. `has_value()`, `value()`, `error()`);
-so, the above code can be written using those, as well:
-
-```c++
-//
-// RegKey::TryGetDwordValue() returns a RegExpected<DWORD>;
-// the returned RegExpected contains a DWORD on success, 
-// or a RegResult instance on error.
-//
-// This would be similar to std::expected<DWORD, RegResult>.
 //
 // 'res' is a RegExpected<DWORD> in this case:
 //
@@ -235,6 +205,10 @@ Thanks to everyone who contributed to this project with some additional features
 comments and suggestions.
 
 ---
+
+## Release Notes for v15.0.0
+
+- Use C++23 `std::expected` instead of my custom `RegExpected` implementation (this requires compiling in C++23 mode).
 
 
 ## Release Notes for v14.1.1

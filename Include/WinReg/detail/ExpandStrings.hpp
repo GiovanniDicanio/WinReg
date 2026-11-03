@@ -13,6 +13,7 @@
 
 #include <Windows.h>            // Windows Platform SDK
 
+#include <expected>             // std::unexpected
 #include <string>               // std::wstring
 
 #include "../RegException.hpp"
@@ -65,13 +66,13 @@ namespace detail
 inline std::wstring ExpandEnvironmentStringsToWstring(const std::wstring& source)
 {
     RegExpected<std::wstring> result = TryExpandEnvironmentStringsToWstring(source);
-    if (!result.IsValid())
+    if (!result.has_value())
     {
-        throw ::winreg::RegException{ result.GetError().Code(),
+        throw ::winreg::RegException{ result.error().Code(),
             "Cannot expand environment strings: ExpandEnvironmentStringsW failed." };
     }
 
-    return std::move(result).GetValue();
+    return std::move(result).value();
 }
 
 
@@ -79,7 +80,7 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
 {
     if (source.empty())
     {
-        return RegExpected<std::wstring>::MakeSuccess(std::wstring{});
+        return std::wstring{};
     }
 
     // Query the destination string size, in wchar_ts, including the terminating NUL
@@ -87,7 +88,7 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
     if (cchRequired == 0)
     {
         const DWORD lastError = ::GetLastError();
-        return RegExpected<std::wstring>::MakeRegExpectedWithError(ErrorOr(lastError, ERROR_INVALID_DATA));
+        return std::unexpected{ RegResult{ ErrorOr(lastError, ERROR_INVALID_DATA) } };
     }
 
     std::wstring result;
@@ -100,7 +101,7 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
         if (cchWritten == 0)
         {
             const DWORD lastError = ::GetLastError();
-            return RegExpected<std::wstring>::MakeRegExpectedWithError(ErrorOr(lastError, ERROR_INVALID_DATA));
+            return std::unexpected{ RegResult{ ErrorOr(lastError, ERROR_INVALID_DATA) } };
         }
 
         if (cchWritten <= cchRequired)
@@ -108,7 +109,7 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
             // Keep what was written, then cut at the first NUL (drops the terminator)
             result.resize(cchWritten);                              // what the API says it wrote
             result.resize(wcsnlen(result.data(), result.size()));   // cut at the first NUL
-            return RegExpected<std::wstring>::MakeSuccess(std::move(result));
+            return result;
         }
 
         // Buffer too small: the environment changed between calls; retry with new size
@@ -116,7 +117,7 @@ inline RegExpected<std::wstring> TryExpandEnvironmentStringsToWstring(const std:
     }
 
     // The string kept growing while expanding
-    return RegExpected<std::wstring>::MakeRegExpectedWithError(ERROR_MORE_DATA);
+    return std::unexpected{ RegResult{ ERROR_MORE_DATA } };
 }
 
 
