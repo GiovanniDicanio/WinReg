@@ -20,6 +20,7 @@
 #include <crtdbg.h>         // _ASSERTE
 #include <wchar.h>          // wcsnlen
 
+#include <expected>         // std::expected, std::unexpected
 #include <memory>           // std::unique_ptr, std::make_unique
 #include <span>             // std::span
 #include <string>           // std::string, std::wstring
@@ -775,8 +776,6 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
     // Read a DWORD (32-bit) value from the registry, invoking RegQueryValueEx
     //
 
-    using RegValueType = DWORD;
-
     DWORD data = 0;                  // data to be read from the registry
     DWORD dataSize = sizeof(data);   // size of data, in bytes
     DWORD type = REG_NONE;           // type of the data stored in the registry
@@ -800,7 +799,7 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
     //
     if ((retCode != ERROR_SUCCESS) && (retCode != ERROR_MORE_DATA))
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     //
@@ -812,7 +811,7 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
     //
     if (type != REG_DWORD)
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+        return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
     }
 
     //
@@ -826,10 +825,10 @@ inline RegExpected<DWORD> RegKey::TryGetDwordValue(const std::wstring& valueName
     //
     if ((retCode == ERROR_MORE_DATA) || (dataSize != sizeof(data)))
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+        return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
     }
 
-    return RegExpected<RegValueType>::MakeSuccess(data);
+    return data;
 }
 
 
@@ -840,8 +839,6 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
     //
     // Read a QWORD (64-bit) value from the registry, invoking RegQueryValueEx
     //
-
-    using RegValueType = ULONGLONG;
 
     ULONGLONG data = 0;              // data to be read from the registry
     DWORD dataSize = sizeof(data);   // size of data, in bytes
@@ -866,7 +863,7 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
     //
     if ((retCode != ERROR_SUCCESS) && (retCode != ERROR_MORE_DATA))
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     //
@@ -878,7 +875,7 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
     //
     if (type != REG_QWORD)
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+        return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
     }
 
     //
@@ -892,10 +889,10 @@ inline RegExpected<ULONGLONG> RegKey::TryGetQwordValue(const std::wstring& value
     //
     if ((retCode == ERROR_MORE_DATA) || (dataSize != sizeof(data)))
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+        return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
     }
 
-    return RegExpected<RegValueType>::MakeSuccess(data);
+    return data;
 }
 
 
@@ -1032,8 +1029,6 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
 {
     _ASSERTE(IsValid());
 
-    using RegValueType = std::wstring;
-
     std::wstring result;        // string to be read from the registry
     DWORD cbDataSize = 0;       // size of the string data, in bytes
     DWORD type = REG_NONE;      // type of the value stored in the registry
@@ -1057,7 +1052,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
 
@@ -1068,7 +1063,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
         if (type != REG_SZ)
         {
             // Invalid type
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+            return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
         }
 
 
@@ -1080,7 +1075,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
 
         if (cbDataSize == 0)
         {
-            return RegExpected<RegValueType>::MakeSuccess(std::wstring{});
+            return std::wstring{};
         }
 
         //
@@ -1089,7 +1084,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
 
         if (cbDataSize % sizeof(wchar_t) != 0)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+            return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
         }
 
 
@@ -1126,12 +1121,12 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
             if (type != REG_SZ)
             {
                 // Invalid type
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+                return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
             }
 
             if (cbDataSize % sizeof(wchar_t) != 0)
             {
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+                return std::unexpected{ RegResult{ ERROR_INVALID_DATA} };
             }
         }
     }
@@ -1139,7 +1134,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
     // Includes ERROR_MORE_DATA if the value kept growing for all attempts
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // Keep only what RegQueryValueExW actually wrote
@@ -1149,7 +1144,7 @@ inline RegExpected<std::wstring> RegKey::TryGetStringValue(const std::wstring& v
     // Then stop at the first NUL, which drops the terminator and any additional padding NULs
     result.resize(wcsnlen(result.data(), result.size()));
 
-    return RegExpected<RegValueType>::MakeSuccess(std::move(result));
+    return result;
 }
 
 
@@ -1296,8 +1291,6 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
 {
     _ASSERTE(IsValid());
 
-    using RegValueType = std::wstring;
-
     std::wstring result;        // expand string to be read from the registry
     DWORD cbDataSize = 0;       // size of the string data, in bytes
     DWORD type = REG_NONE;      // type of the value stored in the registry
@@ -1321,7 +1314,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
 
@@ -1332,7 +1325,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
         if (type != REG_EXPAND_SZ)
         {
             // Invalid type
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+            return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
         }
 
 
@@ -1344,7 +1337,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
 
         if (cbDataSize == 0)
         {
-            return RegExpected<RegValueType>::MakeSuccess(std::wstring{});
+            return std::wstring{};
         }
 
         //
@@ -1353,7 +1346,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
 
         if (cbDataSize % sizeof(wchar_t) != 0)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+            return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
         }
 
 
@@ -1389,12 +1382,12 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
             if (type != REG_EXPAND_SZ)
             {
                 // Invalid type
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+                return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
             }
 
             if (cbDataSize % sizeof(wchar_t) != 0)
             {
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+                return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
             }
         }
     }
@@ -1402,7 +1395,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
     // Includes ERROR_MORE_DATA if the value kept growing for all attempts
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // Keep only what RegQueryValueExW actually wrote
@@ -1418,7 +1411,7 @@ inline RegExpected<std::wstring> RegKey::TryGetExpandStringValue(const std::wstr
         return detail::TryExpandEnvironmentStringsToWstring(result);
     }
 
-    return RegExpected<RegValueType>::MakeSuccess(std::move(result));
+    return result;
 }
 
 
@@ -1581,8 +1574,6 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
 {
     _ASSERTE(IsValid());
 
-    using RegValueType = std::vector<std::wstring>;
-
     // Room for the result multi-string, to be read from the registry
     std::vector<wchar_t> multiString;
 
@@ -1611,7 +1602,7 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
 
@@ -1622,7 +1613,7 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
         if (type != REG_MULTI_SZ)
         {
             // Invalid type
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+            return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
         }
 
 
@@ -1634,7 +1625,7 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
 
         if (cbDataSize == 0)
         {
-            return RegExpected<RegValueType>::MakeSuccess(std::vector<std::wstring>{});
+            return std::vector<std::wstring>{};
         }
 
 
@@ -1645,7 +1636,7 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
 
         if (cbDataSize % sizeof(wchar_t) != 0)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+            return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
         }
 
 
@@ -1684,19 +1675,19 @@ RegKey::TryGetMultiStringValue(const std::wstring& valueName) const
             if (type != REG_MULTI_SZ)
             {
                 // Invalid type
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+                return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
             }
 
             if ((cbDataSize % sizeof(wchar_t)) != 0)
             {
-                return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+                return std::unexpected{ RegResult{ ERROR_INVALID_DATA } };
             }
         }
     }
 
     if (retCode != ERROR_SUCCESS)   // includes ERROR_MORE_DATA
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // Keep only what RegQueryValueExW actually wrote
@@ -1837,8 +1828,6 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
 {
     _ASSERTE(IsValid());
 
-    using RegValueType = std::vector<BYTE>;
-
     // Room for the binary data, to be read from the registry
     std::vector<BYTE> binaryData;
 
@@ -1866,7 +1855,7 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
 
@@ -1877,7 +1866,7 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
         if (type != REG_BINARY)
         {
             // Invalid type
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+            return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE} };
         }
 
         //
@@ -1889,7 +1878,7 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
         //
         if (cbDataSize == 0)
         {
-            return RegExpected<RegValueType>::MakeSuccess(std::vector<BYTE>{});
+            return std::vector<BYTE>{};
         }
 
 
@@ -1917,13 +1906,13 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
         if ((retCode == ERROR_SUCCESS) && (type != REG_BINARY))
         {
             // Invalid type
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_UNSUPPORTED_TYPE);
+            return std::unexpected{ RegResult{ ERROR_UNSUPPORTED_TYPE } };
         }
     }
 
     if (retCode != ERROR_SUCCESS)       // also includes ERROR_MORE_DATA
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // Resize vector to the actual size returned by the last call to RegQueryValueEx;
@@ -1931,7 +1920,7 @@ inline RegExpected<std::vector<BYTE>> RegKey::TryGetBinaryValue(const std::wstri
     // attempts never leaks through.
     binaryData.resize(cbDataSize);
 
-    return RegExpected<RegValueType>::MakeSuccess(std::move(binaryData));
+    return binaryData;
 }
 
 
@@ -2056,9 +2045,6 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
 {
     _ASSERTE(IsValid());
 
-    using RegValueType = RegKey::RawValue;
-
-
     //
     // Note:
     // The algorithm used here doesn't work for HKEY_PERFORMANCE_DATA,
@@ -2070,7 +2056,7 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
     //
     if (m_hKey == HKEY_PERFORMANCE_DATA)
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_NOT_SUPPORTED);
+        return std::unexpected{ RegResult{ ERROR_NOT_SUPPORTED } };
     }
 
     // Room for the raw binary data, to be read from the registry
@@ -2100,7 +2086,7 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
 
@@ -2121,7 +2107,7 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
         //
         if (cbDataSize == 0)
         {
-            return RegExpected<RegValueType>::MakeSuccess(RawValue{ type, {} });
+            return RawValue{ type, {} };
         }
 
         //
@@ -2151,7 +2137,7 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
 
     if (retCode != ERROR_SUCCESS)       // includes ERROR_MORE_DATA
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // Resize vector to the actual size returned by the last call to RegQueryValueEx;
@@ -2159,7 +2145,7 @@ inline RegExpected<RegKey::RawValue> RegKey::TryGetRawValue(const std::wstring& 
     // attempts never leaks through.
     binaryData.resize(cbDataSize);
 
-    return RegExpected<RegValueType>::MakeSuccess(RawValue{ type, std::move(binaryData) });
+    return RawValue{ type, std::move(binaryData) };
 }
 
 
@@ -2321,8 +2307,6 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
 {
     _ASSERTE(IsValid());
 
-    using ReturnType = std::vector<std::wstring>;
-
     // Get some useful enumeration info, like the total number of subkeys
     // and the maximum length of the subkey names
     DWORD subKeyCount = 0;
@@ -2343,7 +2327,7 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // NOTE: According to the MSDN documentation, the size returned for subkey name max length
@@ -2377,7 +2361,7 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
         // On success, the ::RegEnumKeyEx API writes the length of the
@@ -2387,15 +2371,13 @@ inline RegExpected<std::vector<std::wstring>> RegKey::TryEnumSubKeys() const
         subkeyNames.emplace_back(nameBuffer.get(), subKeyNameLen);
     }
 
-    return RegExpected<ReturnType>::MakeSuccess( subkeyNames );
+    return subkeyNames;
 }
 
 
 inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumValues() const
 {
     _ASSERTE(IsValid());
-
-    using ReturnType = std::vector<std::pair<std::wstring, DWORD>>;
 
     // Get useful enumeration info, like the total number of values
     // and the maximum length of the value names
@@ -2417,7 +2399,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     // NOTE: According to the MSDN documentation, the size returned for value name max length
@@ -2452,7 +2434,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
         );
         if (retCode != ERROR_SUCCESS)
         {
-            return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+            return std::unexpected{ RegResult{ retCode } };
         }
 
         // On success, the RegEnumValue API writes the length of the
@@ -2465,7 +2447,7 @@ inline RegExpected<std::vector<std::pair<std::wstring, DWORD>>> RegKey::TryEnumV
         );
     }
 
-    return RegExpected<ReturnType>::MakeSuccess( valueInfo );
+    return valueInfo;
 }
 
 
@@ -2497,8 +2479,6 @@ inline RegExpected<DWORD> RegKey::TryQueryValueType(const std::wstring& valueNam
 {
     _ASSERTE(IsValid());
 
-    using ReturnType = DWORD;
-
     DWORD typeId = 0;     // will be returned by RegQueryValueEx
 
     LSTATUS retCode = ::RegQueryValueExW(
@@ -2512,10 +2492,10 @@ inline RegExpected<DWORD> RegKey::TryQueryValueType(const std::wstring& valueNam
 
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
-    return RegExpected<ReturnType>::MakeSuccess( typeId );
+    return typeId;
 }
 
 
@@ -2551,8 +2531,6 @@ inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
 {
     _ASSERTE(IsValid());
 
-    using ReturnType = RegKey::InfoKey;
-
     InfoKey infoKey{};
     LSTATUS retCode = ::RegQueryInfoKeyW(
         m_hKey,
@@ -2570,10 +2548,10 @@ inline RegExpected<RegKey::InfoKey> RegKey::TryQueryInfoKey() const
     );
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
-    return RegExpected<ReturnType>::MakeSuccess( infoKey );
+    return infoKey;
 }
 
 
@@ -2597,18 +2575,16 @@ inline RegExpected<RegKey::KeyReflection> RegKey::TryQueryReflectionKey() const
 {
     _ASSERTE(IsValid());
 
-    using ReturnType = RegKey::KeyReflection;
-
     BOOL isReflectionDisabled = FALSE;
     LSTATUS retCode = ::RegQueryReflectionKey(m_hKey, &isReflectionDisabled);
     if (retCode != ERROR_SUCCESS)
     {
-        return RegExpected<ReturnType>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 
     KeyReflection keyReflection = isReflectionDisabled ? KeyReflection::ReflectionDisabled
                                                        : KeyReflection::ReflectionEnabled;
-    return RegExpected<ReturnType>::MakeSuccess( keyReflection );
+    return keyReflection;
 }
 
 
@@ -2855,17 +2831,17 @@ inline RegExpected<bool> RegKey::TryContainsValue(const std::wstring& valueName)
     if (retCode == ERROR_SUCCESS)
     {
         // The value exists under the current key
-        return RegExpected<bool>::MakeSuccess(true);
+        return true;
     }
     else if (retCode == ERROR_FILE_NOT_FOUND)
     {
         // The value does *not* exist under the current key
-        return RegExpected<bool>::MakeSuccess(false);
+        return false;
     }
     else
     {
         // Some other error occurred - pass the returned error code back to the caller
-        return RegExpected<bool>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 }
 
@@ -2975,12 +2951,12 @@ inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey,
         ::RegCloseKey(hSubKey);
         hSubKey = nullptr;
 
-        return RegExpected<bool>::MakeSuccess(true);
+        return true;
     }
     else if ((retCode == ERROR_FILE_NOT_FOUND) || (retCode == ERROR_PATH_NOT_FOUND))
     {
         // The specified sub-key does not exist
-        return RegExpected<bool>::MakeSuccess(false);
+        return false;
     }
     //
     // NOTE: ERROR_ACCESS_DENIED
@@ -3003,12 +2979,12 @@ inline RegExpected<bool> RegKey::TryContainsSubKey(const std::wstring& subKey,
     //
     else if (retCode == ERROR_ACCESS_DENIED)
     {
-        return RegExpected<bool>::MakeSuccess(true);
+        return true;
     }
     else
     {
         // Some other error occurred
-        return RegExpected<bool>::MakeRegExpectedWithError(retCode);
+        return std::unexpected{ RegResult{ retCode } };
     }
 }
 

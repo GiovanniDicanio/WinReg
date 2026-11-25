@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="WinRegTests/WinRegTests.vcxproj" Id="8e96988c-fceb-4b3a-a024-21116506eab2" />
+</Solution>
