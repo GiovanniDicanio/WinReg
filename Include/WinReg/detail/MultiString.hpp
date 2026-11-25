@@ -14,6 +14,7 @@
 #include <Windows.h>            // Windows Platform SDK
 #include <wchar.h>              // wcslen
 
+#include <expected>             // std::unexpected
 #include <string>               // std::wstring
 #include <vector>               // std::vector
 
@@ -142,23 +143,20 @@ inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& da
 inline std::vector<std::wstring> ParseMultiString(const std::vector<wchar_t>& data)
 {
     RegExpected<std::vector<std::wstring>> result = TryParseMultiString(data);
-    if (!result.IsValid())
+    if (!result.has_value())
     {
-        throw RegException{ result.GetError().Code(), "Not a valid double-NUL-terminated string." };
+        throw RegException{ result.error().Code(), "Not a valid double-NUL-terminated string." };
     }
 
     // Move the vector out of 'result' (safe use of GetValue() &&): the returned reference is
     // consumed to move-construct the return value before 'result' is destroyed.
     // Without std::move(result), GetValue() & would make an expensive copy of the vector<wstring>.
-    return std::move(result).GetValue();
+    return std::move(result).value();
 }
 
 
 inline RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vector<wchar_t>& data)
 {
-    using RegValueType = std::vector<std::wstring>;
-
-
     //
     // Check some edge cases, like an empty vector or a vector containing only L'\0'.
     // These can be used as an empty form for a double-NUL-terminated string.
@@ -168,20 +166,20 @@ inline RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vec
         ((data.size() == 1) && (data[0] == L'\0')))     // lone L'\0' (documented empty REG_MULTI_SZ form)
     {
         // Return an empty vector
-        return RegExpected<RegValueType>::MakeSuccess(std::vector<std::wstring>{});
+        return std::vector<std::wstring>{};
     }
 
     // Make sure that there are two terminating L'\0's at the end of the sequence
     if (!IsDoubleNullTerminated(data))
     {
-        return RegExpected<RegValueType>::MakeRegExpectedWithError(ERROR_INVALID_DATA);
+        return std::unexpected{ RegResult{ERROR_INVALID_DATA } };
     }
 
     // If this is an empty sequence of two L'\0's: "\0\0" --> return an empty vector
     if (data.size() == 2)
     {
         // Return an empty vector
-        return RegExpected<RegValueType>::MakeSuccess(std::vector<std::wstring>{});
+        return std::vector<std::wstring>{};
     }
 
 
@@ -257,7 +255,7 @@ inline RegExpected<std::vector<std::wstring>> TryParseMultiString(const std::vec
         currStringPtr += currStringLength + 1;
     }
 
-    return RegExpected<RegValueType>::MakeSuccess(std::move(result));
+    return result;
 }
 
 

@@ -5,7 +5,7 @@
 //       Copyright (C) by Giovanni Dicanio (giovanni.dicanio@gmail.com)
 //
 // First version: 2017, January 22nd
-// Last update:   2026, November 3rd
+// Last update:   2026, November 25th
 //
 //----------------------------------------------------------------------------
 // SPDX-License-Identifier: MIT
@@ -44,8 +44,8 @@
 // Unicode UTF-16 strings are represented using the std::wstring class;
 // ATL's CString is not used, to avoid dependencies from ATL or MFC.
 //
-// IDE/Compiler: Visual Studio 2022
-// C++ Language Standard: C++20 (/std:c++20)
+// IDE/Compiler: Visual Studio 2026
+// C++ Language Standard: C++23 (/std:c++23)
 // Code compiles cleanly at warning level 4 (/W4) on 64-bit builds.
 //
 // Requires building in Unicode mode (which has been the default since VS2005).
